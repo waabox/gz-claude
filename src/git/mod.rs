@@ -6,7 +6,7 @@
 
 use std::path::Path;
 
-use git2::Repository;
+use git2::{Repository, StatusOptions};
 
 /// Information about a Git repository.
 #[derive(Debug, Clone, Default)]
@@ -64,6 +64,18 @@ fn get_current_branch(repo: &Repository) -> Option<String> {
     } else {
         // Detached HEAD
         None
+    }
+}
+
+/// Check if the repository has uncommitted changes.
+fn is_repo_dirty(repo: &Repository) -> bool {
+    let mut opts = StatusOptions::new();
+    opts.include_untracked(true)
+        .recurse_untracked_dirs(false);
+
+    match repo.statuses(Some(&mut opts)) {
+        Ok(statuses) => !statuses.is_empty(),
+        Err(_) => false,
     }
 }
 
