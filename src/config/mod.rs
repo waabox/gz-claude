@@ -336,3 +336,6 @@ impl Config {
         actions
     }
 }
+
+#[cfg(test)]
+mod tests;
