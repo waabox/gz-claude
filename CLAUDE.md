@@ -50,7 +50,7 @@ src/
 ├── main.rs       # Entry point, CLI dispatch
 ├── cli.rs        # clap argument definitions
 ├── error.rs      # Error types with thiserror
-├── config/       # Configuration parsing (config.toml)
+├── config/       # Configuration parsing (config.json)
 │   ├── mod.rs        # Config structs, parsing, validation
 │   └── tests.rs      # Configuration tests
 ├── tui/          # ratatui TUI components
@@ -88,7 +88,7 @@ src/
 
 ### Configuration
 
-Located at `~/.config/gz-claude/config.toml`. Actions inherit hierarchically:
+Located at `~/.gz-claude/config.json`. Actions inherit hierarchically:
 1. Global actions (base)
 2. Workspace actions (override/extend)
 3. Project actions (override/extend)

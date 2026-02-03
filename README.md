@@ -51,33 +51,43 @@ gz-claude topbar
 
 ## Configuration
 
-Configuration file: `~/.config/gz-claude/config.toml`
+Configuration file: `~/.gz-claude/config.json`
 
-```toml
-[global]
-editor = "$EDITOR"
-git_info_level = "minimal"  # minimal | standard | detailed
-
-[global.actions]
-c = { name = "Claude", command = "claude", icon = "C" }
-b = { name = "Bash", command = "bash", icon = "B" }
-g = { name = "Lazygit", command = "lazygit", icon = "G" }
-
-[web_client]
-auto_start = false
-bind_address = "0.0.0.0"
-port = 8082
-
-[workspace.mywork]
-name = "My Work"
-
-[[workspace.mywork.projects]]
-name = "Project A"
-path = "/path/to/project-a"
-
-[[workspace.mywork.projects]]
-name = "Project B"
-path = "/path/to/project-b"
+```json
+{
+  "global": {
+    "editor": "$EDITOR",
+    "git_info_level": "minimal",
+    "actions": {
+      "c": { "name": "Claude", "command": "claude", "icon": "🤖" },
+      "b": { "name": "Bash", "command": "bash", "icon": "💻" },
+      "g": { "name": "Lazygit", "command": "lazygit", "icon": "󰊢" }
+    }
+  },
+  "web_client": {
+    "auto_start": false,
+    "bind_address": "0.0.0.0",
+    "port": 8082
+  },
+  "workspace": {
+    "mywork": {
+      "name": "My Work",
+      "actions": {
+        "t": { "name": "Tests", "command": "cargo test", "icon": "🧪" }
+      },
+      "projects": [
+        {
+          "name": "Project A",
+          "path": "/path/to/project-a"
+        },
+        {
+          "name": "Project B",
+          "path": "/path/to/project-b"
+        }
+      ]
+    }
+  }
+}
 ```
 
 ### Action Inheritance
@@ -111,7 +121,7 @@ src/
 ├── main.rs       # Entry point, CLI dispatch
 ├── cli.rs        # clap argument definitions
 ├── error.rs      # Error types with thiserror
-├── config/       # Configuration parsing (config.toml)
+├── config/       # Configuration parsing (config.json)
 ├── tui/          # ratatui TUI components
 │   ├── app.rs        # Application state
 │   ├── runner.rs     # Event loop
