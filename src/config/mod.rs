@@ -9,6 +9,35 @@ use std::path::PathBuf;
 
 use crate::error::{ConfigError, Result};
 
+const EXAMPLE_CONFIG: &str = r#"# gz-claude configuration file
+# See: docs/plans/2026-02-03-gz-claude-design.md
+
+[global]
+editor = "$EDITOR"
+git_info_level = "minimal"  # minimal | standard | detailed
+
+[global.actions]
+c = { name = "Claude", command = "claude", icon = "🤖" }
+b = { name = "Bash", command = "bash", icon = "💻" }
+g = { name = "Lazygit", command = "lazygit", icon = "󰊢" }
+
+[web_client]
+auto_start = false
+bind_address = "0.0.0.0"
+port = 8082
+
+# Example workspace - customize for your projects
+[workspace.example]
+name = "Example Workspace"
+
+[workspace.example.actions]
+t = { name = "Tests", command = "cargo test", icon = "🧪" }
+
+[[workspace.example.projects]]
+name = "My Project"
+path = "/path/to/your/project"
+"#;
+
 /// Root configuration structure.
 #[derive(Debug, Deserialize)]
 pub struct Config {
@@ -166,6 +195,32 @@ impl Config {
         dirs::config_dir()
             .unwrap_or_else(|| PathBuf::from("."))
             .join("gz-claude")
+    }
+
+    /// Create an example configuration file at the default path.
+    /// Returns the path where the file was created.
+    pub fn create_example() -> Result<PathBuf> {
+        let config_dir = Self::default_dir();
+        fs::create_dir_all(&config_dir)?;
+
+        let config_path = Self::default_path();
+        fs::write(&config_path, EXAMPLE_CONFIG)?;
+
+        Ok(config_path)
+    }
+
+    /// Load configuration, creating an example if it doesn't exist.
+    /// Returns (Config, was_created) tuple.
+    pub fn load_or_create_example() -> Result<(Self, bool)> {
+        let config_path = Self::default_path();
+
+        if !config_path.exists() {
+            Self::create_example()?;
+            return Err(ConfigError::NotFound(config_path).into());
+        }
+
+        let config = Self::load_from(&config_path)?;
+        Ok((config, false))
     }
 
     /// Validate the configuration.
