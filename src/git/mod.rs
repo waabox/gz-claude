@@ -1,3 +1,55 @@
 //! Git repository information using git2.
 //!
 //! @author waabox(waabox[at]gmail[dot]com)
+
+#![allow(dead_code)]
+
+use std::path::Path;
+
+/// Information about a Git repository.
+#[derive(Debug, Clone, Default)]
+pub struct GitInfo {
+    /// Current branch name (None if detached HEAD).
+    pub branch: Option<String>,
+    /// Whether there are uncommitted changes.
+    pub is_dirty: bool,
+    /// Number of commits ahead of upstream.
+    pub ahead: u32,
+    /// Number of commits behind upstream.
+    pub behind: u32,
+    /// Number of staged files.
+    pub staged_count: u32,
+    /// Number of unstaged modified files.
+    pub unstaged_count: u32,
+    /// List of modified files (only populated for detailed level).
+    pub modified_files: Vec<String>,
+}
+
+impl GitInfo {
+    /// Format as minimal string: "main *" or "main".
+    pub fn format_minimal(&self) -> String {
+        let branch = self.branch.as_deref().unwrap_or("HEAD");
+        if self.is_dirty {
+            format!("{} *", branch)
+        } else {
+            branch.to_string()
+        }
+    }
+
+    /// Format as standard string: "main * | +2 -1 | 3S 2U".
+    pub fn format_standard(&self) -> String {
+        let branch = self.branch.as_deref().unwrap_or("HEAD");
+        let dirty = if self.is_dirty { " *" } else { "" };
+        let ahead_behind = if self.ahead > 0 || self.behind > 0 {
+            format!(" | +{} -{}", self.ahead, self.behind)
+        } else {
+            String::new()
+        };
+        let staged_unstaged = if self.staged_count > 0 || self.unstaged_count > 0 {
+            format!(" | {}S {}U", self.staged_count, self.unstaged_count)
+        } else {
+            String::new()
+        };
+        format!("{}{}{}{}", branch, dirty, ahead_behind, staged_unstaged)
+    }
+}
