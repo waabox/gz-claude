@@ -72,8 +72,7 @@ fn get_current_branch(repo: &Repository) -> Option<String> {
 /// Check if the repository has uncommitted changes.
 fn is_repo_dirty(repo: &Repository) -> bool {
     let mut opts = StatusOptions::new();
-    opts.include_untracked(true)
-        .recurse_untracked_dirs(false);
+    opts.include_untracked(true).recurse_untracked_dirs(false);
 
     match repo.statuses(Some(&mut opts)) {
         Ok(statuses) => !statuses.is_empty(),
@@ -123,8 +122,7 @@ fn get_ahead_behind(repo: &Repository) -> (u32, u32) {
 /// Count staged and unstaged files.
 fn count_staged_unstaged(repo: &Repository) -> (u32, u32) {
     let mut opts = StatusOptions::new();
-    opts.include_untracked(true)
-        .recurse_untracked_dirs(false);
+    opts.include_untracked(true).recurse_untracked_dirs(false);
 
     let statuses = match repo.statuses(Some(&mut opts)) {
         Ok(s) => s,
@@ -166,8 +164,7 @@ fn count_staged_unstaged(repo: &Repository) -> (u32, u32) {
 /// Get list of modified files (for detailed level).
 fn get_modified_files(repo: &Repository) -> Vec<String> {
     let mut opts = StatusOptions::new();
-    opts.include_untracked(true)
-        .recurse_untracked_dirs(false);
+    opts.include_untracked(true).recurse_untracked_dirs(false);
 
     let statuses = match repo.statuses(Some(&mut opts)) {
         Ok(s) => s,
