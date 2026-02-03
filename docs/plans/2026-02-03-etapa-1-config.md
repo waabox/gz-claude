@@ -1,21 +1,21 @@
-# Etapa 1: Configuración - Plan de Implementación
+# Stage 1: Configuration - Implementation Plan
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
-**Goal:** Implementar el sistema de configuración con parsing TOML, validación estricta de paths, y herencia de acciones en tres niveles (global → workspace → project).
+**Goal:** Implement the configuration system with TOML parsing, strict path validation, and action inheritance at three levels (global -> workspace -> project).
 
-**Architecture:** Structs con serde para deserializar config.toml. Validación en dos fases: primero estructura TOML, luego reglas de negocio (paths existen, keys válidas). Config loader que genera ejemplo si no existe.
+**Architecture:** Structs with serde to deserialize config.toml. Two-phase validation: first TOML structure, then business rules (paths exist, valid keys). Config loader that generates example if not exists.
 
-**Tech Stack:** serde + toml para parsing, dirs para paths del sistema, thiserror para errores tipados.
+**Tech Stack:** serde + toml for parsing, dirs for system paths, thiserror for typed errors.
 
 ---
 
-## Task 1: Definir structs de configuración
+## Task 1: Define configuration structs
 
 **Files:**
 - Modify: `src/config/mod.rs`
 
-**Step 1: Escribir los structs de configuración**
+**Step 1: Write configuration structs**
 
 ```rust
 //! Configuration parsing and validation.
@@ -119,10 +119,10 @@ pub struct Action {
 }
 ```
 
-**Step 2: Verificar que compila**
+**Step 2: Verify compilation**
 
 Run: `cargo check`
-Expected: Compila sin errores
+Expected: Compiles without errors
 
 **Step 3: Commit**
 
@@ -133,12 +133,12 @@ git commit -m "feat(config): add configuration structs with serde"
 
 ---
 
-## Task 2: Crear módulo de errores de configuración
+## Task 2: Create configuration error module
 
 **Files:**
 - Modify: `src/error.rs`
 
-**Step 1: Extender los errores para configuración**
+**Step 1: Extend errors for configuration**
 
 ```rust
 //! Error types for gz-claude.
@@ -193,10 +193,10 @@ pub enum ConfigError {
 pub type Result<T> = std::result::Result<T, GzClaudeError>;
 ```
 
-**Step 2: Verificar que compila**
+**Step 2: Verify compilation**
 
 Run: `cargo check`
-Expected: Compila sin errores
+Expected: Compiles without errors
 
 **Step 3: Commit**
 
@@ -207,14 +207,14 @@ git commit -m "feat(config): add configuration error types"
 
 ---
 
-## Task 3: Implementar carga y parsing de configuración
+## Task 3: Implement configuration loading and parsing
 
 **Files:**
 - Modify: `src/config/mod.rs`
 
-**Step 1: Agregar función de carga**
+**Step 1: Add loading function**
 
-Agregar al final de `src/config/mod.rs`:
+Add at the end of `src/config/mod.rs`:
 
 ```rust
 use crate::error::{ConfigError, Result};
@@ -255,19 +255,19 @@ impl Config {
 }
 ```
 
-**Step 2: Actualizar imports en mod.rs**
+**Step 2: Update imports in mod.rs**
 
-Agregar al inicio después de los use existentes:
+Add at the beginning after existing use statements:
 
 ```rust
 use std::fs;
 use crate::error::{ConfigError, Result};
 ```
 
-**Step 3: Verificar que compila**
+**Step 3: Verify compilation**
 
 Run: `cargo check`
-Expected: Compila sin errores
+Expected: Compiles without errors
 
 **Step 4: Commit**
 
@@ -278,14 +278,14 @@ git commit -m "feat(config): add config loading from TOML file"
 
 ---
 
-## Task 4: Implementar validación de configuración
+## Task 4: Implement configuration validation
 
 **Files:**
 - Modify: `src/config/mod.rs`
 
-**Step 1: Agregar método de validación**
+**Step 1: Add validation method**
 
-Agregar al impl Config:
+Add to impl Config:
 
 ```rust
     /// Validate the configuration.
@@ -348,10 +348,10 @@ Agregar al impl Config:
     }
 ```
 
-**Step 2: Verificar que compila**
+**Step 2: Verify compilation**
 
 Run: `cargo check`
-Expected: Compila sin errores
+Expected: Compiles without errors
 
 **Step 3: Commit**
 
@@ -362,14 +362,14 @@ git commit -m "feat(config): add configuration validation"
 
 ---
 
-## Task 5: Implementar generación de config de ejemplo
+## Task 5: Implement example config generation
 
 **Files:**
 - Modify: `src/config/mod.rs`
 
-**Step 1: Agregar constante con config de ejemplo**
+**Step 1: Add constant with example config**
 
-Agregar al inicio del archivo después de los imports:
+Add at the beginning of the file after imports:
 
 ```rust
 const EXAMPLE_CONFIG: &str = r#"# gz-claude configuration file
@@ -380,9 +380,9 @@ editor = "$EDITOR"
 git_info_level = "minimal"  # minimal | standard | detailed
 
 [global.actions]
-c = { name = "Claude", command = "claude", icon = "🤖" }
-b = { name = "Bash", command = "bash", icon = "💻" }
-g = { name = "Lazygit", command = "lazygit", icon = "󰊢" }
+c = { name = "Claude", command = "claude", icon = "C" }
+b = { name = "Bash", command = "bash", icon = "B" }
+g = { name = "Lazygit", command = "lazygit", icon = "G" }
 
 [web_client]
 auto_start = false
@@ -394,7 +394,7 @@ port = 8082
 name = "Example Workspace"
 
 [workspace.example.actions]
-t = { name = "Tests", command = "cargo test", icon = "🧪" }
+t = { name = "Tests", command = "cargo test", icon = "T" }
 
 [[workspace.example.projects]]
 name = "My Project"
@@ -402,9 +402,9 @@ path = "/path/to/your/project"
 "#;
 ```
 
-**Step 2: Agregar método para crear config de ejemplo**
+**Step 2: Add method to create example config**
 
-Agregar al impl Config:
+Add to impl Config:
 
 ```rust
     /// Create an example configuration file at the default path.
@@ -434,10 +434,10 @@ Agregar al impl Config:
     }
 ```
 
-**Step 3: Verificar que compila**
+**Step 3: Verify compilation**
 
 Run: `cargo check`
-Expected: Compila sin errores
+Expected: Compiles without errors
 
 **Step 4: Commit**
 
@@ -448,18 +448,18 @@ git commit -m "feat(config): add example config generation"
 
 ---
 
-## Task 6: Implementar resolución de acciones con herencia
+## Task 6: Implement action resolution with inheritance
 
 **Files:**
 - Modify: `src/config/mod.rs`
 
-**Step 1: Agregar método para resolver acciones**
+**Step 1: Add method to resolve actions**
 
-Agregar al impl Config:
+Add to impl Config:
 
 ```rust
     /// Resolve actions for a specific project, applying inheritance:
-    /// global → workspace → project
+    /// global -> workspace -> project
     pub fn resolve_actions(
         &self,
         workspace_id: &str,
@@ -485,10 +485,10 @@ Agregar al impl Config:
     }
 ```
 
-**Step 2: Verificar que compila**
+**Step 2: Verify compilation**
 
 Run: `cargo check`
-Expected: Compila sin errores
+Expected: Compiles without errors
 
 **Step 3: Commit**
 
@@ -499,15 +499,15 @@ git commit -m "feat(config): add action inheritance resolution"
 
 ---
 
-## Task 7: Crear tests unitarios para configuración
+## Task 7: Create unit tests for configuration
 
 **Files:**
 - Create: `src/config/tests.rs`
 - Modify: `src/config/mod.rs`
 
-**Step 1: Crear archivo de tests**
+**Step 1: Create tests file**
 
-Crear `src/config/tests.rs`:
+Create `src/config/tests.rs`:
 
 ```rust
 //! Tests for configuration module.
@@ -532,7 +532,7 @@ fn when_parsing_valid_config_should_succeed() {
         git_info_level = "standard"
 
         [global.actions]
-        c = { name = "Claude", command = "claude", icon = "🤖" }
+        c = { name = "Claude", command = "claude", icon = "C" }
 
         [web_client]
         auto_start = true
@@ -705,19 +705,19 @@ fn when_resolving_actions_should_apply_inheritance() {
 }
 ```
 
-**Step 2: Agregar módulo de tests a mod.rs**
+**Step 2: Add tests module to mod.rs**
 
-Agregar al final de `src/config/mod.rs`:
+Add at the end of `src/config/mod.rs`:
 
 ```rust
 #[cfg(test)]
 mod tests;
 ```
 
-**Step 3: Ejecutar tests**
+**Step 3: Run tests**
 
 Run: `cargo test config`
-Expected: 7 tests pasan
+Expected: 7 tests pass
 
 **Step 4: Commit**
 
@@ -728,12 +728,12 @@ git commit -m "test(config): add unit tests for configuration"
 
 ---
 
-## Task 8: Integrar configuración en main.rs
+## Task 8: Integrate configuration in main.rs
 
 **Files:**
 - Modify: `src/main.rs`
 
-**Step 1: Actualizar main.rs para cargar configuración**
+**Step 1: Update main.rs to load configuration**
 
 ```rust
 //! gz-claude: TUI for orchestrating Zellij workspaces with Claude Code.
@@ -832,10 +832,10 @@ fn run_panel() {
 }
 ```
 
-**Step 2: Verificar que compila**
+**Step 2: Verify compilation**
 
 Run: `cargo build`
-Expected: Compila sin errores
+Expected: Compiles without errors
 
 **Step 3: Commit**
 
@@ -846,12 +846,12 @@ git commit -m "feat: integrate configuration loading in main"
 
 ---
 
-## Task 9: Actualizar tests de integración
+## Task 9: Update integration tests
 
 **Files:**
 - Modify: `tests/cli_test.rs`
 
-**Step 1: Actualizar test para reflejar nuevo comportamiento**
+**Step 1: Update test to reflect new behavior**
 
 ```rust
 //! Integration tests for CLI.
@@ -948,10 +948,10 @@ fn when_running_with_web_and_no_web_flags_should_fail() {
 }
 ```
 
-**Step 2: Ejecutar todos los tests**
+**Step 2: Run all tests**
 
 Run: `cargo test`
-Expected: Todos los tests pasan
+Expected: All tests pass
 
 **Step 3: Commit**
 
@@ -962,7 +962,7 @@ git commit -m "test: update CLI integration tests for config loading"
 
 ---
 
-## Verificación Final
+## Final Verification
 
 **Run all checks:**
 
@@ -973,11 +973,11 @@ cargo test
 cargo build --release
 ```
 
-Expected: Todo pasa sin errores ni warnings.
+Expected: All pass without errors or warnings.
 
 ---
 
-## Resumen de Commits
+## Commit Summary
 
 1. `feat(config): add configuration structs with serde`
 2. `feat(config): add configuration error types`

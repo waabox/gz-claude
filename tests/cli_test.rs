@@ -54,17 +54,17 @@ fn when_running_without_config_should_create_example() {
 }
 
 #[test]
-fn when_running_with_valid_config_should_succeed() {
+fn when_running_with_valid_config_and_no_zellij_should_show_error() {
     let temp_dir = TempDir::new().unwrap();
     setup_test_config(&temp_dir);
 
     let mut cmd = Command::cargo_bin("gz-claude").unwrap();
+    // Empty PATH to ensure Zellij is not found
     cmd.env("HOME", temp_dir.path())
+        .env("PATH", "")
         .assert()
-        .success()
-        .stdout(predicate::str::contains(
-            "Configuration loaded successfully",
-        ));
+        .failure()
+        .stderr(predicate::str::contains("Zellij not found"));
 }
 
 #[test]

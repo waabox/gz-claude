@@ -1,21 +1,21 @@
-# Etapa 0: Bootstrap del Proyecto - Plan de Implementación
+# Stage 0: Project Bootstrap - Implementation Plan
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
-**Goal:** Crear la estructura base del proyecto Rust con CLI funcional que distinga entre modo `gz-claude` y `gz-claude panel`.
+**Goal:** Create the base Rust project structure with functional CLI that distinguishes between `gz-claude` and `gz-claude panel` modes.
 
-**Architecture:** Binario único con subcomandos usando clap. Estructura modular preparada para las siguientes etapas (config, tui, zellij, git).
+**Architecture:** Single binary with subcommands using clap. Modular structure prepared for the following stages (config, tui, zellij, git).
 
 **Tech Stack:** Rust 1.75+, clap 4.x (derive), thiserror
 
 ---
 
-## Task 1: Crear Cargo.toml con dependencias
+## Task 1: Create Cargo.toml with dependencies
 
 **Files:**
 - Create: `Cargo.toml`
 
-**Step 1: Crear el archivo Cargo.toml**
+**Step 1: Create Cargo.toml file**
 
 ```toml
 [package]
@@ -34,18 +34,18 @@ clap = { version = "4.5", features = ["derive"] }
 thiserror = "2.0"
 anyhow = "1.0"
 
-# Config (Etapa 1)
+# Config (Stage 1)
 serde = { version = "1.0", features = ["derive"] }
 toml = "0.8"
 
-# TUI (Etapa 3)
+# TUI (Stage 3)
 ratatui = "0.29"
 crossterm = "0.28"
 
-# Git (Etapa 2)
+# Git (Stage 2)
 git2 = "0.19"
 
-# Async (Etapa 4)
+# Async (Stage 4)
 tokio = { version = "1.43", features = ["full"] }
 
 # Directories
@@ -61,10 +61,10 @@ lto = true
 strip = true
 ```
 
-**Step 2: Verificar que compila**
+**Step 2: Verify compilation**
 
 Run: `cargo check`
-Expected: Compila sin errores (descarga dependencias)
+Expected: Compiles without errors (downloads dependencies)
 
 **Step 3: Commit**
 
@@ -75,7 +75,7 @@ git commit -m "chore: initialize Cargo.toml with dependencies"
 
 ---
 
-## Task 2: Crear estructura de directorios
+## Task 2: Create directory structure
 
 **Files:**
 - Create: `src/main.rs`
@@ -86,7 +86,7 @@ git commit -m "chore: initialize Cargo.toml with dependencies"
 - Create: `src/git/mod.rs`
 - Create: `src/error.rs`
 
-**Step 1: Crear main.rs inicial**
+**Step 1: Create initial main.rs**
 
 ```rust
 //! gz-claude: TUI for orchestrating Zellij workspaces with Claude Code.
@@ -117,7 +117,7 @@ fn main() {
 }
 ```
 
-**Step 2: Crear cli.rs con clap**
+**Step 2: Create cli.rs with clap**
 
 ```rust
 //! CLI argument parsing for gz-claude.
@@ -150,7 +150,7 @@ pub enum Command {
 }
 ```
 
-**Step 3: Crear error.rs**
+**Step 3: Create error.rs**
 
 ```rust
 //! Error types for gz-claude.
@@ -177,7 +177,7 @@ pub enum GzClaudeError {
 pub type Result<T> = std::result::Result<T, GzClaudeError>;
 ```
 
-**Step 4: Crear módulos placeholder**
+**Step 4: Create placeholder modules**
 
 `src/config/mod.rs`:
 ```rust
@@ -207,10 +207,10 @@ pub type Result<T> = std::result::Result<T, GzClaudeError>;
 //! @author waabox(waabox[at]gmail[dot]com)
 ```
 
-**Step 5: Verificar que compila**
+**Step 5: Verify compilation**
 
 Run: `cargo build`
-Expected: Compila sin errores
+Expected: Compiles without errors
 
 **Step 6: Commit**
 
@@ -221,12 +221,12 @@ git commit -m "feat: add project structure with CLI skeleton"
 
 ---
 
-## Task 3: Agregar tests de integración para CLI
+## Task 3: Add CLI integration tests
 
 **Files:**
 - Create: `tests/cli_test.rs`
 
-**Step 1: Crear test de CLI**
+**Step 1: Create CLI test**
 
 ```rust
 //! Integration tests for CLI.
@@ -280,10 +280,10 @@ fn when_running_with_web_and_no_web_flags_should_fail() {
 }
 ```
 
-**Step 2: Ejecutar tests**
+**Step 2: Run tests**
 
 Run: `cargo test`
-Expected: 5 tests pasan
+Expected: 5 tests pass
 
 **Step 3: Commit**
 
@@ -294,13 +294,13 @@ git commit -m "test: add CLI integration tests"
 
 ---
 
-## Task 4: Crear .gitignore y archivos de proyecto
+## Task 4: Create .gitignore and project files
 
 **Files:**
 - Create: `.gitignore`
 - Create: `rust-toolchain.toml`
 
-**Step 1: Crear .gitignore**
+**Step 1: Create .gitignore**
 
 ```gitignore
 # Rust
@@ -321,7 +321,7 @@ Thumbs.db
 *.log
 ```
 
-**Step 2: Crear rust-toolchain.toml**
+**Step 2: Create rust-toolchain.toml**
 
 ```toml
 [toolchain]
@@ -337,12 +337,12 @@ git commit -m "chore: add .gitignore and rust-toolchain.toml"
 
 ---
 
-## Task 5: Crear CLAUDE.md para el proyecto
+## Task 5: Create CLAUDE.md for the project
 
 **Files:**
 - Create: `CLAUDE.md`
 
-**Step 1: Crear CLAUDE.md**
+**Step 1: Create CLAUDE.md**
 
 ```markdown
 # CLAUDE.md
@@ -422,7 +422,7 @@ git commit -m "docs: add CLAUDE.md for Claude Code guidance"
 
 ---
 
-## Verificación Final
+## Final Verification
 
 **Run all checks:**
 
@@ -433,11 +433,11 @@ cargo test
 cargo build --release
 ```
 
-Expected: Todo pasa sin errores ni warnings.
+Expected: All pass without errors or warnings.
 
 ---
 
-## Resumen de Commits
+## Commit Summary
 
 1. `chore: initialize Cargo.toml with dependencies`
 2. `feat: add project structure with CLI skeleton`

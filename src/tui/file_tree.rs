@@ -7,6 +7,7 @@
 
 #![allow(dead_code)]
 
+use std::collections::HashSet;
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -62,6 +63,21 @@ impl FileNode {
     ///
     /// Does nothing if this node is not a directory.
     pub fn load_children(&mut self) {
+        self.load_children_with_expanded(&HashSet::new());
+    }
+
+    /// Loads children for this directory node with pre-expanded directories.
+    ///
+    /// Reads the directory contents, filters out hidden files (starting with '.'),
+    /// and sorts children with directories first, then alphabetically (case-insensitive).
+    /// Directories in the `expanded_dirs` set will be expanded and have their children loaded.
+    ///
+    /// Does nothing if this node is not a directory.
+    ///
+    /// # Arguments
+    ///
+    /// * `expanded_dirs` - Set of directory paths that should be expanded
+    pub fn load_children_with_expanded(&mut self, expanded_dirs: &HashSet<PathBuf>) {
         if !self.is_dir {
             return;
         }
@@ -88,6 +104,14 @@ impl FileNode {
             (false, true) => std::cmp::Ordering::Greater,
             _ => a.name.to_lowercase().cmp(&b.name.to_lowercase()),
         });
+
+        // Expand directories that are in the expanded_dirs set
+        for child in &mut children {
+            if child.is_dir && expanded_dirs.contains(&child.path) {
+                child.expanded = true;
+                child.load_children_with_expanded(expanded_dirs);
+            }
+        }
 
         self.children = children;
     }
@@ -143,6 +167,23 @@ impl FileTree {
     ///
     /// Some(FileTree) if the root path exists and is a directory, None otherwise.
     pub fn new(root_path: &Path) -> Option<Self> {
+        Self::with_expanded(root_path, &HashSet::new())
+    }
+
+    /// Creates a new FileTree with pre-expanded directories.
+    ///
+    /// The root is automatically expanded to show its immediate children.
+    /// Additional directories in the `expanded_dirs` set will also be expanded.
+    ///
+    /// # Arguments
+    ///
+    /// * `root_path` - The path to use as the root of the tree
+    /// * `expanded_dirs` - Set of directory paths that should be expanded
+    ///
+    /// # Returns
+    ///
+    /// Some(FileTree) if the root path exists and is a directory, None otherwise.
+    pub fn with_expanded(root_path: &Path, expanded_dirs: &HashSet<PathBuf>) -> Option<Self> {
         let mut root = FileNode::new(root_path, 0)?;
 
         if !root.is_dir {
@@ -150,7 +191,7 @@ impl FileTree {
         }
 
         root.expanded = true;
-        root.load_children();
+        root.load_children_with_expanded(expanded_dirs);
 
         let mut tree = Self {
             root,

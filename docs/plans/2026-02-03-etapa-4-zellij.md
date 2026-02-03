@@ -1,4 +1,4 @@
-# Etapa 4: Zellij Integration Implementation Plan
+# Stage 4: Zellij Integration Implementation Plan
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
@@ -127,13 +127,10 @@ const LAYOUT_TEMPLATE: &str = r#"layout {
     }
 
     pane split_direction="vertical" {
-        pane size=40 {
-            command "gz-claude"
-            args ["panel"]
+        pane size=40 command="gz-claude" {
+            args "panel"
         }
-        pane focus=true {
-            command "bash"
-        }
+        pane focus=true command="bash"
     }
 
     pane size=1 borderless=true {
@@ -210,8 +207,8 @@ mod tests {
     fn when_layout_template_should_contain_required_elements() {
         assert!(LAYOUT_TEMPLATE.contains("tab-bar"));
         assert!(LAYOUT_TEMPLATE.contains("status-bar"));
-        assert!(LAYOUT_TEMPLATE.contains("gz-claude"));
-        assert!(LAYOUT_TEMPLATE.contains("panel"));
+        assert!(LAYOUT_TEMPLATE.contains("command=\"gz-claude\""));
+        assert!(LAYOUT_TEMPLATE.contains("args \"panel\""));
         assert!(LAYOUT_TEMPLATE.contains("split_direction=\"vertical\""));
     }
 }
@@ -645,7 +642,7 @@ fn run_main(force_web: bool, force_no_web: bool) {
         std::process::exit(1);
     }
 
-    // Determine web client behavior (for Etapa 5)
+    // Determine web client behavior (for Stage 5)
     let _start_web = if force_web {
         true
     } else if force_no_web {

@@ -99,8 +99,13 @@ fn render_current_view(frame: &mut Frame, area: Rect, state: &AppState, config: 
             workspace_id,
             project_index,
         } => {
-            let view =
-                FileBrowserView::new(config, workspace_id, *project_index, state.selected_index());
+            let view = FileBrowserView::with_expanded(
+                config,
+                workspace_id,
+                *project_index,
+                state.selected_index(),
+                state.expanded_dirs(),
+            );
             view.render(frame, area);
         }
     }
@@ -145,10 +150,11 @@ fn handle_input(state: &mut AppState, config: &Config, event: InputEvent) {
             }
         }
         InputEvent::Refresh => {
-            // TODO: Implement refresh functionality (Etapa 4)
+            // Views are recreated on each render, so git info refreshes automatically.
+            // The 'r' key serves as a signal to the user that data has been refreshed.
         }
-        InputEvent::Action(_char) => {
-            // TODO: Implement action handling (Etapa 4)
+        InputEvent::Action(key) => {
+            handle_action(state, config, key);
         }
     }
 }
@@ -178,8 +184,13 @@ fn get_max_index(state: &AppState, config: &Config) -> usize {
             workspace_id,
             project_index,
         } => {
-            let view =
-                FileBrowserView::new(config, workspace_id, *project_index, state.selected_index());
+            let view = FileBrowserView::with_expanded(
+                config,
+                workspace_id,
+                *project_index,
+                state.selected_index(),
+                state.expanded_dirs(),
+            );
             view.visible_count()
         }
     }
@@ -208,8 +219,74 @@ fn handle_enter(state: &mut AppState, config: &Config) {
             let project_index = state.selected_index();
             state.navigate_to_project(project_index);
         }
-        View::FileBrowser { .. } => {
-            // TODO: Implement file opening and directory expansion (Etapa 4)
+        View::FileBrowser {
+            workspace_id,
+            project_index,
+        } => {
+            let view = FileBrowserView::with_expanded(
+                config,
+                workspace_id,
+                *project_index,
+                state.selected_index(),
+                state.expanded_dirs(),
+            );
+
+            if view.selected_is_file() {
+                // Open the file in editor
+                if let Some(file_path) = view.selected_path() {
+                    if let Some(project) = view.project() {
+                        let editor = &config.global.editor;
+                        if let Err(e) =
+                            crate::zellij::open_file_in_editor(&project.path, editor, &file_path)
+                        {
+                            eprintln!("Error opening file: {}", e);
+                        }
+                    }
+                }
+            } else if let Some(dir_path) = view.selected_path() {
+                // Toggle directory expand/collapse
+                state.toggle_dir_expanded(dir_path);
+            }
+        }
+    }
+}
+
+/// Handles action key presses by executing Zellij commands.
+///
+/// Resolves actions based on inheritance (global -> workspace -> project),
+/// finds the action matching the pressed key, and opens a new Zellij pane
+/// with the configured command.
+///
+/// Actions are only available in Projects and FileBrowser views. In the
+/// Workspaces view, this function returns early without action.
+///
+/// # Arguments
+///
+/// * `state` - Reference to the application state
+/// * `config` - Reference to the application configuration
+/// * `key` - The action key that was pressed
+fn handle_action(state: &AppState, config: &Config, key: char) {
+    let (workspace_id, project_index) = match state.current_view() {
+        View::Projects { workspace_id } => (workspace_id.as_str(), state.selected_index()),
+        View::FileBrowser {
+            workspace_id,
+            project_index,
+        } => (workspace_id.as_str(), *project_index),
+        View::Workspaces => return,
+    };
+
+    let actions = config.resolve_actions(workspace_id, project_index);
+    let key_str = key.to_string();
+
+    if let Some(action) = actions.get(&key_str) {
+        if let Some(project) = config
+            .workspace
+            .get(workspace_id)
+            .and_then(|ws| ws.projects.get(project_index))
+        {
+            if let Err(e) = crate::zellij::open_pane(&project.path, &action.command) {
+                eprintln!("Error executing action: {}", e);
+            }
         }
     }
 }
@@ -292,5 +369,22 @@ mod tests {
 
         assert!(!state.should_quit());
         assert_eq!(*state.current_view(), View::Workspaces);
+    }
+
+    #[test]
+    fn when_handling_action_at_workspaces_should_do_nothing() {
+        let config = create_test_config();
+        let state = AppState::new();
+
+        // Verify we're at Workspaces view
+        assert_eq!(*state.current_view(), View::Workspaces);
+
+        // Call handle_action directly - should return early without panicking
+        handle_action(&state, &config, 'c');
+
+        // State should remain unchanged
+        assert_eq!(*state.current_view(), View::Workspaces);
+        assert_eq!(state.selected_index(), 0);
+        assert!(!state.should_quit());
     }
 }

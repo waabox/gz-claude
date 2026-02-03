@@ -4,6 +4,9 @@
 
 #![allow(dead_code)]
 
+use std::collections::HashSet;
+use std::path::{Path, PathBuf};
+
 /// Represents the current view in the TUI application.
 ///
 /// The application supports three navigation levels:
@@ -39,6 +42,8 @@ pub struct AppState {
     selected_index: usize,
     /// Whether the application should quit.
     should_quit: bool,
+    /// Set of expanded directory paths in the file browser.
+    expanded_dirs: HashSet<PathBuf>,
 }
 
 impl AppState {
@@ -47,12 +52,13 @@ impl AppState {
     /// # Returns
     ///
     /// A new AppState initialized with the Workspaces view, selection at index 0,
-    /// and should_quit set to false.
+    /// should_quit set to false, and an empty set of expanded directories.
     pub fn new() -> Self {
         Self {
             current_view: View::Workspaces,
             selected_index: 0,
             should_quit: false,
+            expanded_dirs: HashSet::new(),
         }
     }
 
@@ -83,6 +89,44 @@ impl AppState {
     /// * `index` - The new selected index
     pub fn set_selected_index(&mut self, index: usize) {
         self.selected_index = index;
+    }
+
+    /// Toggles the expanded state of a directory.
+    ///
+    /// If the directory is currently expanded, it will be collapsed.
+    /// If collapsed, it will be expanded.
+    ///
+    /// # Arguments
+    ///
+    /// * `path` - The path of the directory to toggle
+    pub fn toggle_dir_expanded(&mut self, path: PathBuf) {
+        if self.expanded_dirs.contains(&path) {
+            self.expanded_dirs.remove(&path);
+        } else {
+            self.expanded_dirs.insert(path);
+        }
+    }
+
+    /// Checks if a directory is currently expanded.
+    ///
+    /// # Arguments
+    ///
+    /// * `path` - The path of the directory to check
+    ///
+    /// # Returns
+    ///
+    /// True if the directory is expanded, false otherwise.
+    pub fn is_dir_expanded(&self, path: &Path) -> bool {
+        self.expanded_dirs.contains(path)
+    }
+
+    /// Returns a reference to the set of expanded directories.
+    ///
+    /// # Returns
+    ///
+    /// A reference to the HashSet of expanded directory paths.
+    pub fn expanded_dirs(&self) -> &HashSet<PathBuf> {
+        &self.expanded_dirs
     }
 
     /// Navigates to the Projects view for the specified workspace.

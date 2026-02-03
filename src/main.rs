@@ -27,6 +27,16 @@ fn main() {
 }
 
 fn run_main(force_web: bool, force_no_web: bool) {
+    // Check if Zellij is installed
+    if !zellij::is_zellij_installed() {
+        eprintln!(
+            "Error: Zellij not found\n\n\
+             gz-claude requires Zellij to be installed.\n\
+             Install it from: https://zellij.dev/documentation/installation"
+        );
+        std::process::exit(1);
+    }
+
     // Load configuration
     let config = match Config::load() {
         Ok(config) => config,
@@ -65,8 +75,8 @@ fn run_main(force_web: bool, force_no_web: bool) {
         std::process::exit(1);
     }
 
-    // Determine web client behavior
-    let start_web = if force_web {
+    // Determine web client behavior (for Etapa 5)
+    let _start_web = if force_web {
         true
     } else if force_no_web {
         false
@@ -74,13 +84,17 @@ fn run_main(force_web: bool, force_no_web: bool) {
         config.web_client.auto_start
     };
 
-    println!("Configuration loaded successfully!");
-    println!("Workspaces: {}", config.workspace.len());
-    println!(
-        "Web client: {}",
-        if start_web { "enabled" } else { "disabled" }
-    );
-    println!("\nStarting gz-claude...");
+    // Generate the Zellij layout
+    if let Err(e) = zellij::generate_layout() {
+        eprintln!("Error generating Zellij layout: {}", e);
+        std::process::exit(1);
+    }
+
+    // Start Zellij with the gz-claude layout
+    if let Err(e) = zellij::start_zellij() {
+        eprintln!("Error starting Zellij: {}", e);
+        std::process::exit(1);
+    }
 }
 
 fn run_panel() {

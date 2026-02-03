@@ -1,94 +1,94 @@
-# gz-claude - Documento de Diseño
+# gz-claude - Design Document
 
-> Binario Rust que orquesta Zellij + Web Client + Claude Code con un panel de Workspaces.
+> Rust binary that orchestrates Zellij + Web Client + Claude Code with a Workspaces panel.
 
-## Objetivo
+## Objective
 
-Al ejecutar `gz-claude`:
+When running `gz-claude`:
 
-1. Se abre Zellij con un layout predefinido
-2. Se levanta opcionalmente el Web Client de Zellij (solo red local)
-3. Panel izquierdo: TUI de Workspaces con navegación drill-down
-4. Panel central: panes de terminal dinámicos (Claude, Bash, etc.)
+1. Opens Zellij with a predefined layout
+2. Optionally starts the Zellij Web Client (local network only)
+3. Left panel: TUI with Workspaces drill-down navigation
+4. Central panel: dynamic terminal panes (Claude, Bash, etc.)
 
 ---
 
-## Arquitectura General
+## General Architecture
 
-### Binario único `gz-claude`
+### Single binary `gz-claude`
 
-Modos de ejecución:
+Execution modes:
 
 ```
-gz-claude              → Inicia Zellij con el layout, opcionalmente web client
-gz-claude panel        → Corre dentro de Zellij, renderiza el TUI
-gz-claude --web        → Override para forzar web client
-gz-claude --no-web     → Override para deshabilitar web client
+gz-claude              -> Starts Zellij with the layout, optionally web client
+gz-claude panel        -> Runs inside Zellij, renders the TUI
+gz-claude --web        -> Override to force web client
+gz-claude --no-web     -> Override to disable web client
 ```
 
-### Flujo de arranque
+### Startup Flow
 
-1. `gz-claude` (sin argumentos) valida la configuración
-2. Si hay paths inválidos → error con mensaje claro y exit code 1
-3. Si todo OK → genera/actualiza el layout KDL en `~/.config/zellij/layouts/`
-4. Lanza `zellij --layout=gz-claude`
-5. Opcionalmente lanza el web server según config/flags
-6. Zellij ejecuta `gz-claude panel` en el pane izquierdo
+1. `gz-claude` (without arguments) validates the configuration
+2. If paths are invalid -> error with clear message and exit code 1
+3. If all OK -> generates/updates the KDL layout in `~/.config/zellij/layouts/`
+4. Launches `zellij --layout=gz-claude`
+5. Optionally launches the web server according to config/flags
+6. Zellij executes `gz-claude panel` in the left pane
 
-### Dependencias Rust
+### Rust Dependencies
 
 - `ratatui` - TUI framework
 - `crossterm` - terminal backend
-- `tokio` - async runtime (para procesos externos)
-- `toml` + `serde` - parsing de config
-- `git2` - información de Git nativa (sin shell out)
+- `tokio` - async runtime (for external processes)
+- `toml` + `serde` - config parsing
+- `git2` - native Git information (no shell out)
 - `clap` - CLI argument parsing
 
-### Estructura de crates
+### Crate Structure
 
 ```
 gz-claude/
 ├── src/
 │   ├── main.rs
 │   ├── cli.rs          # clap args
-│   ├── config/         # parsing y validación
-│   ├── tui/            # componentes ratatui
-│   ├── zellij/         # interacción con zellij CLI
-│   └── git/            # wrappers git2
+│   ├── config/         # parsing and validation
+│   ├── tui/            # ratatui components
+│   ├── zellij/         # zellij CLI interaction
+│   └── git/            # git2 wrappers
 ```
 
 ---
 
-## Configuración
+## Configuration
 
-### Archivo principal
+### Main File
 
 `~/.config/gz-claude/config.toml`
 
 ```toml
-# Acciones globales (disponibles en todos los proyectos)
+# Global actions (available in all projects)
 [global]
-editor = "$EDITOR"  # comando para abrir archivos, default $EDITOR
+editor = "$EDITOR"  # command to open files, default $EDITOR
 git_info_level = "minimal"  # minimal | standard | detailed
 
 [global.actions]
-c = { name = "Claude", command = "claude", icon = "🤖" }
-b = { name = "Bash", command = "bash", icon = "💻" }
-g = { name = "Lazygit", command = "lazygit", icon = "󰊢" }
+c = { name = "Claude", command = "claude", icon = "C" }
+b = { name = "Bash", command = "bash", icon = "B" }
+g = { name = "Lazygit", command = "lazygit", icon = "G" }
 
 [web_client]
 auto_start = false
-bind_address = "0.0.0.0"  # o IP específica
+bind_address = "0.0.0.0"  # or specific IP
 port = 8082
-# token se genera automáticamente y se guarda en ~/.config/gz-claude/web_token
+# token is auto-generated and saved to ~/.config/gz-claude/web_token
 
 # Workspaces
 [workspace.fanki]
 name = "Fanki"
 
 [workspace.fanki.actions]
-t = { name = "Tests", command = "mvn test", icon = "🧪" }
-d = { name = "Deploy", command = "make deploy", icon = "🚀" }
+t = { name = "Tests", command = "mvn test", icon = "T" }
+d = { name = "Deploy", command = "make deploy", icon = "D" }
 
 [[workspace.fanki.projects]]
 name = "API Gateway"
@@ -98,34 +98,34 @@ path = "/Users/emiliano/dev/fanki/api-gateway"
 name = "Payments"
 path = "/Users/emiliano/dev/fanki/payments"
 [workspace.fanki.projects.actions]
-t = { name = "Tests", command = "gradle test", icon = "🧪" }  # override del workspace
-s = { name = "Swagger", command = "make swagger", icon = "📋" }  # acción extra
+t = { name = "Tests", command = "gradle test", icon = "T" }  # workspace override
+s = { name = "Swagger", command = "make swagger", icon = "S" }  # extra action
 ```
 
-### Resolución de acciones (herencia)
+### Action Resolution (Inheritance)
 
-1. Se cargan acciones globales
-2. Se mergean acciones del workspace (override por key)
-3. Se mergean acciones del proyecto (override por key)
+1. Global actions are loaded
+2. Workspace actions are merged (override by key)
+3. Project actions are merged (override by key)
 
-### Validación al iniciar
+### Startup Validation
 
-- Todos los paths deben existir y ser directorios
-- Keys de acciones deben ser un único caracter
-- Comandos no pueden estar vacíos
+- All paths must exist and be directories
+- Action keys must be a single character
+- Commands cannot be empty
 
 ---
 
-## TUI - Navegación y Vistas
+## TUI - Navigation and Views
 
-### Navegación jerárquica (drill-down)
+### Hierarchical Navigation (Drill-Down)
 
-- Vista 1: Lista de workspaces → Enter entra al workspace
-- Vista 2: Lista de proyectos del workspace → Enter entra al proyecto (file browser)
-- Vista 3: Git info + file tree del proyecto + acciones
-- Backspace/Esc para volver atrás
+- View 1: Workspaces list -> Enter goes into the workspace
+- View 2: Workspace projects list -> Enter goes into the project (file browser)
+- View 3: Git info + project file tree + actions
+- Backspace/Esc to go back
 
-### Vista 1: Workspaces
+### View 1: Workspaces
 
 ```
 ┌─ gz-claude ─────────────────────┐
@@ -141,29 +141,29 @@ s = { name = "Swagger", command = "make swagger", icon = "📋" }  # acción ext
 └─────────────────────────────────┘
 ```
 
-### Vista 2: Proyectos del workspace
+### View 2: Workspace Projects
 
 ```
 ┌─ Fanki ─────────────────────────────┐
 │                                     │
 │  Projects                           │
 │                                     │
-│  > API Gateway      main *  🤖 💻   │
-│    Payments         develop 🤖 💻   │
-│    Tickets          main    🤖 💻   │
+│  > API Gateway      main *  C B     │
+│    Payments         develop C B     │
+│    Tickets          main    C B     │
 │                                     │
 ├─────────────────────────────────────┤
-│ Enter: browse  🤖c:Claude  💻b:Bash │
+│ Enter: browse  Cc:Claude  Bb:Bash   │
 │ Esc: back  q: quit                  │
 └─────────────────────────────────────┘
 ```
 
-- `Enter` en un proyecto: entra a Vista 3 (file browser del proyecto)
-- `c` con proyecto seleccionado: abre Claude en nuevo pane con `cwd = project.path`
-- `b` con proyecto seleccionado: abre Bash en nuevo pane con `cwd = project.path`
-- Los iconos son configurables con emojis por default
+- `Enter` on a project: enters View 3 (project file browser)
+- `c` with project selected: opens Claude in new pane with `cwd = project.path`
+- `b` with project selected: opens Bash in new pane with `cwd = project.path`
+- Icons are configurable with emojis by default
 
-### Vista 3: File Browser del proyecto
+### View 3: Project File Browser
 
 ```
 ┌─ API Gateway ───────────────────────┐
@@ -175,39 +175,39 @@ s = { name = "Swagger", command = "make swagger", icon = "📋" }  # acción ext
 │    pom.xml                          │
 │    README.md                        │
 ├─────────────────────────────────────┤
-│ 🤖c 💻b 󰊢g 🧪t │ Enter: open/expand │
+│ Cc Bb Gg Tt │ Enter: open/expand    │
 │ Esc: back                           │
 └─────────────────────────────────────┘
 ```
 
-- `Enter` en carpeta: expande/colapsa
-- `Enter` en archivo: abre en nuevo pane con `$EDITOR`
-- Las acciones configuradas siguen disponibles
+- `Enter` on folder: expand/collapse
+- `Enter` on file: opens in new pane with `$EDITOR`
+- Configured actions remain available
 
-### Controles
+### Controls
 
-- `↑/↓` o `j/k`: navegar
-- `Enter`: seleccionar / abrir archivo / expandir carpeta
-- `Esc` o `Backspace`: volver atrás
-- `r`: refrescar git info
-- `q`: salir (solo en Vista 1)
-- Teclas de acciones: ejecutan el comando en nuevo pane
+- `↑/↓` or `j/k`: navigate
+- `Enter`: select / open file / expand folder
+- `Esc` or `Backspace`: go back
+- `r`: refresh git info
+- `q`: quit (only in View 1)
+- Action keys: execute command in new pane
 
 ### Git Info Levels
 
-Configurable con `git_info_level`:
+Configurable with `git_info_level`:
 
-- **minimal**: Branch actual + indicador dirty (`main *`)
+- **minimal**: Current branch + dirty indicator (`main *`)
 - **standard**: Branch + dirty + ahead/behind + staged/unstaged count
-- **detailed**: Todo lo anterior + lista de archivos modificados
+- **detailed**: All of the above + list of modified files
 
 ---
 
-## Integración con Zellij
+## Zellij Integration
 
-### Generación del layout
+### Layout Generation
 
-Al ejecutar `gz-claude`, se genera `~/.config/zellij/layouts/gz-claude.kdl`:
+When running `gz-claude`, it generates `~/.config/zellij/layouts/gz-claude.kdl`:
 
 ```kdl
 layout {
@@ -216,13 +216,10 @@ layout {
     }
 
     pane split_direction="vertical" {
-        pane size=40 {
-            command "gz-claude"
-            args ["panel"]
+        pane size=40 command="gz-claude" {
+            args "panel"
         }
-        pane focus=true {
-            command "bash"
-        }
+        pane focus=true command="bash"
     }
 
     pane size=1 borderless=true {
@@ -231,68 +228,68 @@ layout {
 }
 ```
 
-### Acciones desde el TUI
+### Actions from TUI
 
-Abrir pane con comando:
+Open pane with command:
 
 ```bash
-zellij action new-pane --cwd "/path/al/proyecto" -- claude
+zellij action new-pane --cwd "/path/to/project" -- claude
 ```
 
-Abrir archivo con editor:
+Open file with editor:
 
 ```bash
-zellij action new-pane --cwd "/path/al/proyecto" -- $EDITOR archivo.rs
+zellij action new-pane --cwd "/path/to/project" -- $EDITOR file.rs
 ```
 
 ### Web Client
 
-Si `web_client.auto_start = true` o se usa `--web`:
+If `web_client.auto_start = true` or `--web` is used:
 
 ```bash
 zellij web --listen 192.168.1.100:8082
 ```
 
-El token se genera una vez y se guarda en `~/.config/gz-claude/web_token`. El TUI muestra la URL completa cuando el web server está activo.
+The token is generated once and saved to `~/.config/gz-claude/web_token`. The TUI shows the complete URL when the web server is active.
 
-### Detección de Zellij
+### Zellij Detection
 
-- `gz-claude panel` verifica que corre dentro de Zellij (variable `ZELLIJ`)
-- Si no está en Zellij, muestra error y sugiere ejecutar `gz-claude` sin argumentos
+- `gz-claude panel` verifies it runs inside Zellij (`ZELLIJ` variable)
+- If not in Zellij, shows error and suggests running `gz-claude` without arguments
 
 ---
 
-## Validación y Manejo de Errores
+## Validation and Error Handling
 
-### Al iniciar `gz-claude`
+### At `gz-claude` Startup
 
-1. **Buscar config:** `~/.config/gz-claude/config.toml`
-   - Si no existe → crear config de ejemplo y mostrar mensaje
+1. **Find config:** `~/.config/gz-claude/config.toml`
+   - If not exists -> create example config and show message
 
-2. **Validar estructura TOML:**
-   - Syntax errors → mostrar línea y columna del error
+2. **Validate TOML structure:**
+   - Syntax errors -> show line and column of error
 
-3. **Validar paths de proyectos:**
+3. **Validate project paths:**
    ```
    Error: Invalid configuration
 
    The following project paths do not exist:
 
-     • Fanki / API Gateway
+     - Fanki / API Gateway
        /Users/emiliano/dev/fanki/api-gateway
 
-     • Helios / Backend
+     - Helios / Backend
        /Users/emiliano/dev/helios/backend
 
    Please fix these paths in ~/.config/gz-claude/config.toml
    ```
 
-4. **Validar acciones:**
-   - Keys duplicadas en mismo nivel → error
-   - Key no es un solo caracter → error
-   - Comando vacío → error
+4. **Validate actions:**
+   - Duplicate keys at same level -> error
+   - Key is not a single character -> error
+   - Empty command -> error
 
-5. **Validar Zellij instalado:**
+5. **Validate Zellij installed:**
    ```
    Error: Zellij not found
 
@@ -300,51 +297,51 @@ El token se genera una vez y se guarda en `~/.config/gz-claude/web_token`. El TU
    Install it from: https://zellij.dev/documentation/installation
    ```
 
-### Dentro del TUI
+### Inside the TUI
 
-- Errores de git → mostrar `[git error]` en lugar de branch
-- Error al ejecutar acción → mostrar notificación temporal en el TUI
-- Refresh (`r`) falla → mostrar mensaje, mantener último estado conocido
+- Git errors -> show `[git error]` instead of branch
+- Action execution error -> show temporary notification in TUI
+- Refresh (`r`) fails -> show message, keep last known state
 
 ---
 
-## Plan de Implementación
+## Implementation Plan
 
-### Etapa 0: Bootstrap del proyecto
-- Crear `Cargo.toml` con dependencias
-- Estructura de directorios
-- CLI básico con clap (`gz-claude`, `gz-claude panel`)
+### Stage 0: Project Bootstrap
+- Create `Cargo.toml` with dependencies
+- Directory structure
+- Basic CLI with clap (`gz-claude`, `gz-claude panel`)
 
-### Etapa 1: Configuración
-- Structs de config con serde
-- Parsing de `config.toml`
-- Validación completa (paths, acciones, keys)
-- Generación de config de ejemplo
-- Tests unitarios de parsing y validación
+### Stage 1: Configuration
+- Config structs with serde
+- `config.toml` parsing
+- Complete validation (paths, actions, keys)
+- Example config generation
+- Unit tests for parsing and validation
 
-### Etapa 2: Git
-- Wrapper sobre `git2`
-- Obtener: branch, dirty status, ahead/behind, staged/unstaged count
-- Niveles de detalle configurables
-- Tests con repos de prueba
+### Stage 2: Git
+- Wrapper over `git2`
+- Get: branch, dirty status, ahead/behind, staged/unstaged count
+- Configurable detail levels
+- Tests with test repos
 
-### Etapa 3: TUI
+### Stage 3: TUI
 - Setup ratatui + crossterm
-- Vista 1: Workspaces
-- Vista 2: Proyectos con iconos
-- Vista 3: File browser
-- Navegación drill-down
-- Barra de acciones dinámica
+- View 1: Workspaces
+- View 2: Projects with icons
+- View 3: File browser
+- Drill-down navigation
+- Dynamic action bar
 
-### Etapa 4: Integración Zellij
-- Generar layout KDL
-- Ejecutar `zellij action new-pane`
-- Abrir archivos con editor
-- Detectar entorno Zellij
+### Stage 4: Zellij Integration
+- Generate KDL layout
+- Execute `zellij action new-pane`
+- Open files with editor
+- Detect Zellij environment
 
-### Etapa 5: Web Client
-- Gestión del token
-- Arranque condicional del web server
-- Mostrar URL en TUI cuando activo
+### Stage 5: Web Client
+- Token management
+- Conditional web server startup
+- Show URL in TUI when active
 
-Cada etapa termina con funcionalidad testeable y commit.
+Each stage ends with testable functionality and commit.

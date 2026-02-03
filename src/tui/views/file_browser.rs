@@ -14,6 +14,7 @@ use ratatui::{
     widgets::{Block, Borders, List, ListItem, Paragraph},
     Frame,
 };
+use std::collections::HashSet;
 use std::path::PathBuf;
 
 use crate::config::{Action, Config, Project};
@@ -54,12 +55,44 @@ impl<'a> FileBrowserView<'a> {
         project_index: usize,
         selected: usize,
     ) -> Self {
+        Self::with_expanded(
+            config,
+            workspace_id,
+            project_index,
+            selected,
+            &HashSet::new(),
+        )
+    }
+
+    /// Creates a new FileBrowserView with pre-expanded directories.
+    ///
+    /// Loads the file tree from the project path with the specified directories expanded,
+    /// and git information during construction.
+    ///
+    /// # Arguments
+    ///
+    /// * `config` - Reference to the application configuration containing workspaces
+    /// * `workspace_id` - The identifier of the workspace containing the project
+    /// * `project_index` - The index of the project within the workspace
+    /// * `selected` - Index of the currently selected item in the file tree
+    /// * `expanded_dirs` - Set of directory paths that should be expanded
+    ///
+    /// # Returns
+    ///
+    /// A new FileBrowserView instance with pre-loaded file tree and git information.
+    pub fn with_expanded(
+        config: &'a Config,
+        workspace_id: &'a str,
+        project_index: usize,
+        selected: usize,
+        expanded_dirs: &HashSet<PathBuf>,
+    ) -> Self {
         let project = config
             .workspace
             .get(workspace_id)
             .and_then(|w| w.projects.get(project_index));
 
-        let file_tree = project.and_then(|p| FileTree::new(&p.path));
+        let file_tree = project.and_then(|p| FileTree::with_expanded(&p.path, expanded_dirs));
         let git_info = project.and_then(|p| get_git_info(&p.path, config.global.git_info_level));
 
         Self {
