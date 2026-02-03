@@ -6,6 +6,8 @@
 
 use std::path::Path;
 
+use git2::Repository;
+
 /// Information about a Git repository.
 #[derive(Debug, Clone, Default)]
 pub struct GitInfo {
@@ -52,4 +54,21 @@ impl GitInfo {
         };
         format!("{}{}{}{}", branch, dirty, ahead_behind, staged_unstaged)
     }
+}
+
+/// Get the current branch name from a repository.
+fn get_current_branch(repo: &Repository) -> Option<String> {
+    let head = repo.head().ok()?;
+    if head.is_branch() {
+        head.shorthand().map(String::from)
+    } else {
+        // Detached HEAD
+        None
+    }
+}
+
+/// Open a Git repository at the given path.
+/// Returns None if the path is not a Git repository.
+pub fn open_repo(path: &Path) -> Option<Repository> {
+    Repository::open(path).ok()
 }
