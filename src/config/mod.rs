@@ -167,4 +167,75 @@ impl Config {
             .unwrap_or_else(|| PathBuf::from("."))
             .join("gz-claude")
     }
+
+    /// Validate the configuration.
+    ///
+    /// Checks:
+    /// - At least one workspace exists
+    /// - All action keys are single characters
+    /// - All action commands are non-empty
+    /// - All project paths exist and are directories
+    ///
+    /// # Returns
+    ///
+    /// Ok(()) if the configuration is valid.
+    ///
+    /// # Errors
+    ///
+    /// - `ConfigError::NoWorkspaces` if no workspaces are defined
+    /// - `ConfigError::InvalidActionKey` if an action key is not a single character
+    /// - `ConfigError::EmptyCommand` if an action command is empty or whitespace
+    /// - `ConfigError::PathNotFound` if a project path does not exist
+    /// - `ConfigError::PathNotDirectory` if a project path is not a directory
+    pub fn validate(&self) -> Result<()> {
+        if self.workspace.is_empty() {
+            return Err(ConfigError::NoWorkspaces.into());
+        }
+
+        // Validate global actions
+        self.validate_actions(&self.global.actions)?;
+
+        // Validate each workspace
+        for workspace in self.workspace.values() {
+            self.validate_actions(&workspace.actions)?;
+
+            for project in &workspace.projects {
+                self.validate_actions(&project.actions)?;
+                self.validate_project_path(project)?;
+            }
+        }
+
+        Ok(())
+    }
+
+    fn validate_actions(&self, actions: &HashMap<String, Action>) -> Result<()> {
+        for (key, action) in actions {
+            if key.chars().count() != 1 {
+                return Err(ConfigError::InvalidActionKey { key: key.clone() }.into());
+            }
+            if action.command.trim().is_empty() {
+                return Err(ConfigError::EmptyCommand {
+                    action_name: action.name.clone(),
+                }
+                .into());
+            }
+        }
+        Ok(())
+    }
+
+    fn validate_project_path(&self, project: &Project) -> Result<()> {
+        if !project.path.exists() {
+            return Err(ConfigError::PathNotFound {
+                path: project.path.clone(),
+            }
+            .into());
+        }
+        if !project.path.is_dir() {
+            return Err(ConfigError::PathNotDirectory {
+                path: project.path.clone(),
+            }
+            .into());
+        }
+        Ok(())
+    }
 }
