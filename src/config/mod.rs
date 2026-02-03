@@ -4,7 +4,10 @@
 
 use serde::Deserialize;
 use std::collections::HashMap;
+use std::fs;
 use std::path::PathBuf;
+
+use crate::error::{ConfigError, Result};
 
 /// Root configuration structure.
 #[derive(Debug, Deserialize)]
@@ -96,4 +99,72 @@ pub struct Action {
     pub command: String,
     #[serde(default)]
     pub icon: Option<String>,
+}
+
+impl Config {
+    /// Load configuration from the default path (~/.config/gz-claude/config.toml).
+    ///
+    /// Reads the configuration file from the user's config directory and parses
+    /// it as TOML into the Config structure.
+    ///
+    /// # Returns
+    ///
+    /// The parsed configuration or an error if the file doesn't exist or is invalid.
+    ///
+    /// # Errors
+    ///
+    /// - `ConfigError::NotFound` if the configuration file doesn't exist
+    /// - `ConfigError::ReadError` if the file cannot be read
+    /// - `ConfigError::ParseError` if the TOML content is invalid
+    pub fn load() -> Result<Self> {
+        let config_path = Self::default_path();
+        Self::load_from(&config_path)
+    }
+
+    /// Load configuration from a specific path.
+    ///
+    /// # Arguments
+    ///
+    /// * `path` - The path to the configuration file
+    ///
+    /// # Returns
+    ///
+    /// The parsed configuration or an error if the file doesn't exist or is invalid.
+    ///
+    /// # Errors
+    ///
+    /// - `ConfigError::NotFound` if the configuration file doesn't exist
+    /// - `ConfigError::ReadError` if the file cannot be read
+    /// - `ConfigError::ParseError` if the TOML content is invalid
+    pub fn load_from(path: &PathBuf) -> Result<Self> {
+        if !path.exists() {
+            return Err(ConfigError::NotFound(path.clone()).into());
+        }
+
+        let content = fs::read_to_string(path)?;
+        let config: Config =
+            toml::from_str(&content).map_err(ConfigError::ParseError)?;
+        Ok(config)
+    }
+
+    /// Returns the default configuration file path.
+    ///
+    /// The default path is `~/.config/gz-claude/config.toml` on Linux/macOS.
+    /// Falls back to `./gz-claude/config.toml` if the config directory cannot be determined.
+    pub fn default_path() -> PathBuf {
+        dirs::config_dir()
+            .unwrap_or_else(|| PathBuf::from("."))
+            .join("gz-claude")
+            .join("config.toml")
+    }
+
+    /// Returns the default configuration directory.
+    ///
+    /// The default directory is `~/.config/gz-claude` on Linux/macOS.
+    /// Falls back to `./gz-claude` if the config directory cannot be determined.
+    pub fn default_dir() -> PathBuf {
+        dirs::config_dir()
+            .unwrap_or_else(|| PathBuf::from("."))
+            .join("gz-claude")
+    }
 }
