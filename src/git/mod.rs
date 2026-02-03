@@ -238,3 +238,6 @@ pub fn get_git_info(path: &Path, level: GitInfoLevel) -> Option<GitInfo> {
         modified_files,
     })
 }
+
+#[cfg(test)]
+mod tests;
