@@ -93,5 +93,47 @@ fn run_panel() {
         std::process::exit(1);
     }
 
-    println!("Running in panel mode (inside Zellij)");
+    // Load configuration
+    let config = match Config::load() {
+        Ok(config) => config,
+        Err(e) => {
+            if matches!(
+                e,
+                error::GzClaudeError::Config(error::ConfigError::NotFound(_))
+            ) {
+                // Create example config
+                match Config::create_example() {
+                    Ok(path) => {
+                        eprintln!(
+                            "Created example configuration at {}\n\
+                             Please edit it to add your workspaces and run again.",
+                            path.display()
+                        );
+                    }
+                    Err(e) => {
+                        eprintln!("Error creating example config: {}", e);
+                    }
+                }
+            } else {
+                eprintln!("Error loading configuration: {}", e);
+            }
+            std::process::exit(1);
+        }
+    };
+
+    // Validate configuration
+    if let Err(e) = config.validate() {
+        eprintln!("Error: Invalid configuration\n\n{}", e);
+        eprintln!(
+            "\nPlease fix the configuration at {}",
+            Config::default_path().display()
+        );
+        std::process::exit(1);
+    }
+
+    // Run the TUI
+    if let Err(e) = tui::run(&config) {
+        eprintln!("Error running TUI: {}", e);
+        std::process::exit(1);
+    }
 }

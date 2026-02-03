@@ -100,3 +100,26 @@ fn when_running_with_web_and_no_web_flags_should_fail() {
     let mut cmd = Command::cargo_bin("gz-claude").unwrap();
     cmd.args(["--web", "--no-web"]).assert().failure();
 }
+
+#[test]
+fn when_running_panel_with_valid_config_should_start_tui() {
+    // This test verifies panel mode starts with valid config.
+    // We can't test the actual TUI, but we can test it initializes.
+    let temp_dir = TempDir::new().unwrap();
+    setup_test_config(&temp_dir);
+
+    let mut cmd = Command::cargo_bin("gz-claude").unwrap();
+    // Set ZELLIJ env to pretend we're inside Zellij.
+    // But the TUI will fail to initialize without a real terminal,
+    // so we just verify it gets past the Zellij check.
+    let assertion = cmd
+        .arg("panel")
+        .env("HOME", temp_dir.path())
+        .env("ZELLIJ", "true")
+        .timeout(std::time::Duration::from_millis(500))
+        .assert();
+    // The process will fail because there's no terminal,
+    // but it won't fail with the "must be run inside Zellij" error.
+    // Verify it does NOT contain the Zellij environment check error.
+    assertion.stderr(predicate::str::contains("must be run inside Zellij").not());
+}
