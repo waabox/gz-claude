@@ -8,6 +8,8 @@ use std::path::Path;
 
 use git2::{Repository, Status, StatusOptions};
 
+use crate::config::GitInfoLevel;
+
 /// Information about a Git repository.
 #[derive(Debug, Clone, Default)]
 pub struct GitInfo {
@@ -182,4 +184,57 @@ fn get_modified_files(repo: &Repository) -> Vec<String> {
 /// Returns None if the path is not a Git repository.
 pub fn open_repo(path: &Path) -> Option<Repository> {
     Repository::open(path).ok()
+}
+
+/// Get Git information for a repository at the given path.
+///
+/// The amount of information collected depends on the level:
+/// - Minimal: branch + dirty status
+/// - Standard: + ahead/behind + staged/unstaged counts
+/// - Detailed: + list of modified files
+///
+/// Returns None if the path is not a Git repository.
+pub fn get_git_info(path: &Path, level: GitInfoLevel) -> Option<GitInfo> {
+    let repo = open_repo(path)?;
+
+    let branch = get_current_branch(&repo);
+    let is_dirty = is_repo_dirty(&repo);
+
+    // For minimal level, we're done
+    if level == GitInfoLevel::Minimal {
+        return Some(GitInfo {
+            branch,
+            is_dirty,
+            ..Default::default()
+        });
+    }
+
+    // Standard level adds ahead/behind and staged/unstaged
+    let (ahead, behind) = get_ahead_behind(&repo);
+    let (staged_count, unstaged_count) = count_staged_unstaged(&repo);
+
+    if level == GitInfoLevel::Standard {
+        return Some(GitInfo {
+            branch,
+            is_dirty,
+            ahead,
+            behind,
+            staged_count,
+            unstaged_count,
+            modified_files: Vec::new(),
+        });
+    }
+
+    // Detailed level adds modified files list
+    let modified_files = get_modified_files(&repo);
+
+    Some(GitInfo {
+        branch,
+        is_dirty,
+        ahead,
+        behind,
+        staged_count,
+        unstaged_count,
+        modified_files,
+    })
 }
