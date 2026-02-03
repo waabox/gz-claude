@@ -293,4 +293,46 @@ impl Config {
         }
         Ok(())
     }
+
+    /// Resolve actions for a specific project, applying inheritance:
+    /// global -> workspace -> project
+    ///
+    /// Actions are merged in order of specificity, with more specific levels
+    /// overriding less specific ones:
+    /// 1. Global actions (default for all)
+    /// 2. Workspace actions (override global for that workspace)
+    /// 3. Project actions (override workspace for that specific project)
+    ///
+    /// # Arguments
+    ///
+    /// * `workspace_id` - The identifier of the workspace
+    /// * `project_index` - The index of the project within the workspace
+    ///
+    /// # Returns
+    ///
+    /// A HashMap containing all resolved actions for the specified project.
+    /// If the workspace or project doesn't exist, returns only global actions.
+    pub fn resolve_actions(
+        &self,
+        workspace_id: &str,
+        project_index: usize,
+    ) -> HashMap<String, Action> {
+        let mut actions = self.global.actions.clone();
+
+        if let Some(workspace) = self.workspace.get(workspace_id) {
+            // Merge workspace actions (override global)
+            for (key, action) in &workspace.actions {
+                actions.insert(key.clone(), action.clone());
+            }
+
+            // Merge project actions (override workspace)
+            if let Some(project) = workspace.projects.get(project_index) {
+                for (key, action) in &project.actions {
+                    actions.insert(key.clone(), action.clone());
+                }
+            }
+        }
+
+        actions
+    }
 }
