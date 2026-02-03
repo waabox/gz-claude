@@ -161,6 +161,23 @@ fn count_staged_unstaged(repo: &Repository) -> (u32, u32) {
     (staged, unstaged)
 }
 
+/// Get list of modified files (for detailed level).
+fn get_modified_files(repo: &Repository) -> Vec<String> {
+    let mut opts = StatusOptions::new();
+    opts.include_untracked(true)
+        .recurse_untracked_dirs(false);
+
+    let statuses = match repo.statuses(Some(&mut opts)) {
+        Ok(s) => s,
+        Err(_) => return Vec::new(),
+    };
+
+    statuses
+        .iter()
+        .filter_map(|entry| entry.path().map(String::from))
+        .collect()
+}
+
 /// Open a Git repository at the given path.
 /// Returns None if the path is not a Git repository.
 pub fn open_repo(path: &Path) -> Option<Repository> {
