@@ -79,6 +79,45 @@ fn is_repo_dirty(repo: &Repository) -> bool {
     }
 }
 
+/// Get the number of commits ahead and behind the upstream branch.
+fn get_ahead_behind(repo: &Repository) -> (u32, u32) {
+    let head = match repo.head() {
+        Ok(h) => h,
+        Err(_) => return (0, 0),
+    };
+
+    let local_oid = match head.target() {
+        Some(oid) => oid,
+        None => return (0, 0),
+    };
+
+    // Get the upstream branch
+    let branch_name = match head.shorthand() {
+        Some(name) => name,
+        None => return (0, 0),
+    };
+
+    let branch = match repo.find_branch(branch_name, git2::BranchType::Local) {
+        Ok(b) => b,
+        Err(_) => return (0, 0),
+    };
+
+    let upstream = match branch.upstream() {
+        Ok(u) => u,
+        Err(_) => return (0, 0), // No upstream configured
+    };
+
+    let upstream_oid = match upstream.get().target() {
+        Some(oid) => oid,
+        None => return (0, 0),
+    };
+
+    match repo.graph_ahead_behind(local_oid, upstream_oid) {
+        Ok((ahead, behind)) => (ahead as u32, behind as u32),
+        Err(_) => (0, 0),
+    }
+}
+
 /// Open a Git repository at the given path.
 /// Returns None if the path is not a Git repository.
 pub fn open_repo(path: &Path) -> Option<Repository> {
