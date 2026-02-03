@@ -6,7 +6,7 @@
 
 use std::path::Path;
 
-use git2::{Repository, StatusOptions};
+use git2::{Repository, Status, StatusOptions};
 
 /// Information about a Git repository.
 #[derive(Debug, Clone, Default)]
@@ -116,6 +116,49 @@ fn get_ahead_behind(repo: &Repository) -> (u32, u32) {
         Ok((ahead, behind)) => (ahead as u32, behind as u32),
         Err(_) => (0, 0),
     }
+}
+
+/// Count staged and unstaged files.
+fn count_staged_unstaged(repo: &Repository) -> (u32, u32) {
+    let mut opts = StatusOptions::new();
+    opts.include_untracked(true)
+        .recurse_untracked_dirs(false);
+
+    let statuses = match repo.statuses(Some(&mut opts)) {
+        Ok(s) => s,
+        Err(_) => return (0, 0),
+    };
+
+    let mut staged = 0u32;
+    let mut unstaged = 0u32;
+
+    for entry in statuses.iter() {
+        let status = entry.status();
+
+        // Staged changes (index)
+        if status.intersects(
+            Status::INDEX_NEW
+                | Status::INDEX_MODIFIED
+                | Status::INDEX_DELETED
+                | Status::INDEX_RENAMED
+                | Status::INDEX_TYPECHANGE,
+        ) {
+            staged += 1;
+        }
+
+        // Unstaged changes (workdir)
+        if status.intersects(
+            Status::WT_NEW
+                | Status::WT_MODIFIED
+                | Status::WT_DELETED
+                | Status::WT_RENAMED
+                | Status::WT_TYPECHANGE,
+        ) {
+            unstaged += 1;
+        }
+    }
+
+    (staged, unstaged)
 }
 
 /// Open a Git repository at the given path.
