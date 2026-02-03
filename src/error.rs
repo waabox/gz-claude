@@ -2,6 +2,8 @@
 //!
 //! @author waabox(waabox[at]gmail[dot]com)
 
+#![allow(dead_code)]
+
 use std::path::PathBuf;
 use thiserror::Error;
 

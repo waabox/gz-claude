@@ -76,7 +76,10 @@ fn run_main(force_web: bool, force_no_web: bool) {
 
     println!("Configuration loaded successfully!");
     println!("Workspaces: {}", config.workspace.len());
-    println!("Web client: {}", if start_web { "enabled" } else { "disabled" });
+    println!(
+        "Web client: {}",
+        if start_web { "enabled" } else { "disabled" }
+    );
     println!("\nStarting gz-claude...");
 }
 

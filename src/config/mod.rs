@@ -2,6 +2,8 @@
 //!
 //! @author waabox(waabox[at]gmail[dot]com)
 
+#![allow(dead_code)]
+
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::fs;
@@ -171,8 +173,7 @@ impl Config {
         }
 
         let content = fs::read_to_string(path)?;
-        let config: Config =
-            toml::from_str(&content).map_err(ConfigError::ParseError)?;
+        let config: Config = toml::from_str(&content).map_err(ConfigError::ParseError)?;
         Ok(config)
     }
 

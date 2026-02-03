@@ -62,7 +62,9 @@ fn when_running_with_valid_config_should_succeed() {
     cmd.env("HOME", temp_dir.path())
         .assert()
         .success()
-        .stdout(predicate::str::contains("Configuration loaded successfully"));
+        .stdout(predicate::str::contains(
+            "Configuration loaded successfully",
+        ));
 }
 
 #[test]
