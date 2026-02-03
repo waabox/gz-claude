@@ -4,6 +4,7 @@
 
 use thiserror::Error;
 
+#[allow(dead_code)]
 #[derive(Error, Debug)]
 pub enum GzClaudeError {
     #[error("Configuration error: {0}")]
@@ -19,4 +20,5 @@ pub enum GzClaudeError {
     Io(#[from] std::io::Error),
 }
 
+#[allow(dead_code)]
 pub type Result<T> = std::result::Result<T, GzClaudeError>;

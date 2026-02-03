@@ -43,7 +43,5 @@ fn when_running_with_version_flag_should_show_version() {
 #[test]
 fn when_running_with_web_and_no_web_flags_should_fail() {
     let mut cmd = Command::cargo_bin("gz-claude").unwrap();
-    cmd.args(["--web", "--no-web"])
-        .assert()
-        .failure();
+    cmd.args(["--web", "--no-web"]).assert().failure();
 }
