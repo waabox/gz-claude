@@ -31,7 +31,7 @@ pub enum ConfigError {
     ReadError(#[from] std::io::Error),
 
     #[error("Failed to parse configuration: {0}")]
-    ParseError(#[from] toml::de::Error),
+    ParseError(#[from] serde_json::Error),
 
     #[error("Invalid action key '{key}': must be a single character")]
     InvalidActionKey { key: String },

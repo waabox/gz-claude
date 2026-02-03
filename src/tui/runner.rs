@@ -9,12 +9,21 @@
 
 use ratatui::layout::Rect;
 use ratatui::Frame;
+use std::cell::RefCell;
+use std::path::PathBuf;
 
 use crate::config::Config;
 use crate::error::Result;
+use crate::session::Session;
 use crate::tui::app::{AppState, View};
 use crate::tui::terminal::{init, poll_event, restore, InputEvent, Tui};
 use crate::tui::views::{FileBrowserView, ProjectsView, WorkspacesView};
+
+/// Thread-local session state for the TUI.
+thread_local! {
+    static SESSION: RefCell<Option<Session>> = RefCell::new(None);
+    static MAIN_PANE_USED: RefCell<bool> = RefCell::new(false);
+}
 
 /// Runs the TUI application with the given configuration.
 ///
@@ -33,10 +42,28 @@ use crate::tui::views::{FileBrowserView, ProjectsView, WorkspacesView};
 ///
 /// Returns an error if terminal initialization, event polling, or restoration fails.
 pub fn run(config: &Config) -> Result<()> {
+    // Initialize or load session
+    let session = Session::load().unwrap_or_else(|| {
+        let zellij_session = std::env::var("ZELLIJ_SESSION_NAME")
+            .unwrap_or_else(|_| "gz-claude".to_string());
+        Session::new(zellij_session)
+    });
+
+    SESSION.with(|s| {
+        *s.borrow_mut() = Some(session);
+    });
+
     let mut terminal = init()?;
     let mut state = AppState::new();
 
     let result = run_loop(&mut terminal, &mut state, config);
+
+    // Save session on exit
+    SESSION.with(|s| {
+        if let Some(session) = s.borrow().as_ref() {
+            let _ = session.save();
+        }
+    });
 
     restore()?;
 
@@ -255,7 +282,7 @@ fn handle_enter(state: &mut AppState, config: &Config) {
 ///
 /// Resolves actions based on inheritance (global -> workspace -> project),
 /// finds the action matching the pressed key, and opens a new Zellij pane
-/// with the configured command.
+/// with the configured command. Tracks panes in session state.
 ///
 /// Actions are only available in Projects and FileBrowser views. In the
 /// Workspaces view, this function returns early without action.
@@ -284,8 +311,21 @@ fn handle_action(state: &AppState, config: &Config, key: char) {
             .get(workspace_id)
             .and_then(|ws| ws.projects.get(project_index))
         {
-            if let Err(e) = crate::zellij::open_pane(&project.path, &action.command) {
-                eprintln!("Error executing action: {}", e);
+            let project_path = project.path.clone();
+            let pane_name = Session::generate_pane_name(&project_path);
+            let full_command = format!("{} {}", action.command, project.path.display());
+
+            // Check if main pane is already used
+            let main_used = MAIN_PANE_USED.with(|m| *m.borrow());
+
+            if !main_used {
+                // First project goes to main pane, fullscreen for web client
+                if crate::zellij::run_in_main_pane(&full_command, true).is_ok() {
+                    MAIN_PANE_USED.with(|m| *m.borrow_mut() = true);
+                }
+            } else {
+                // Subsequent projects go to floating panes, fullscreen for web client
+                let _ = crate::zellij::run_in_floating_pane(&pane_name, &full_command, true);
             }
         }
     }

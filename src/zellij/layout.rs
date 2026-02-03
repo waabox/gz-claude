@@ -12,13 +12,18 @@ use crate::error::Result;
 
 /// KDL layout template for the gz-claude Zellij workspace.
 ///
-/// This layout creates a three-row structure:
-/// - Top row: Tab bar plugin (borderless, 1 row)
-/// - Middle row: Vertical split with gz-claude panel (40 cols) and focused shell
-/// - Bottom row: Status bar plugin (borderless, 1 row)
+/// This layout creates a four-row structure:
+/// - Row 1: Tab bar plugin (borderless, 1 row)
+/// - Row 2: gz-claude top bar with web URL (borderless, 1 row)
+/// - Row 3: Vertical split with gz-claude panel (40 cols) and focused shell
+/// - Row 4: Status bar plugin (borderless, 1 row)
 pub const LAYOUT_TEMPLATE: &str = r#"layout {
     pane size=1 borderless=true {
         plugin location="zellij:tab-bar"
+    }
+
+    pane size=1 borderless=true command="gz-claude" {
+        args "top-bar"
     }
 
     pane split_direction="vertical" {
@@ -147,6 +152,7 @@ mod tests {
         assert!(LAYOUT_TEMPLATE.contains("split_direction=\"vertical\""));
         assert!(LAYOUT_TEMPLATE.contains("command=\"gz-claude\""));
         assert!(LAYOUT_TEMPLATE.contains("args \"panel\""));
+        assert!(LAYOUT_TEMPLATE.contains("args \"top-bar\""));
         assert!(LAYOUT_TEMPLATE.contains("command=\"bash\""));
         assert!(LAYOUT_TEMPLATE.contains("focus=true"));
         assert!(LAYOUT_TEMPLATE.contains("size=40"));

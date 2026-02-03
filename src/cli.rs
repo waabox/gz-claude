@@ -25,4 +25,6 @@ pub struct Cli {
 pub enum Command {
     /// Run the TUI panel (inside Zellij)
     Panel,
+    /// Run the top bar (inside Zellij)
+    TopBar,
 }

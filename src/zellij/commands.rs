@@ -120,6 +120,160 @@ pub fn open_pane(cwd: &Path, command: &str) -> Result<()> {
     Ok(())
 }
 
+/// Runs a command in a floating pane.
+///
+/// Creates a floating pane with the specified command. Floating panes
+/// appear over the layout and don't have splitting restrictions.
+/// User can toggle between floating/embedded with Ctrl+p w.
+///
+/// # Arguments
+///
+/// * `pane_name` - Unique name for the pane (for tracking)
+/// * `command` - The full command string to execute (e.g., "claude /path/to/project")
+///
+/// # Returns
+///
+/// Returns `Ok(())` if the pane is created successfully.
+///
+/// # Errors
+///
+/// Returns `GzClaudeError::Zellij` if any Zellij action fails.
+/// Runs a command in the main (central) pane by writing to the terminal.
+///
+/// If `fullscreen` is true, the pane will be toggled to fullscreen mode
+/// for optimal viewing from the web client.
+pub fn run_in_main_pane(command: &str, fullscreen: bool) -> Result<()> {
+    if command.trim().is_empty() {
+        return Err(GzClaudeError::Zellij(
+            "Cannot run empty command".to_string(),
+        ));
+    }
+
+    // Move focus to the right pane
+    Command::new("zellij")
+        .args(["action", "move-focus", "right"])
+        .status()
+        .map_err(|e| GzClaudeError::Zellij(format!("Failed to move focus: {}", e)))?;
+
+    // Small delay
+    std::thread::sleep(std::time::Duration::from_millis(50));
+
+    // Write the command to the terminal (with newline to execute)
+    let cmd_with_newline = format!("{}\n", command);
+    Command::new("zellij")
+        .args(["action", "write-chars", &cmd_with_newline])
+        .status()
+        .map_err(|e| GzClaudeError::Zellij(format!("Failed to write command: {}", e)))?;
+
+    if fullscreen {
+        // Toggle fullscreen for web client viewing
+        std::thread::sleep(std::time::Duration::from_millis(100));
+        let _ = Command::new("zellij")
+            .args(["action", "toggle-fullscreen"])
+            .status();
+        // Don't move focus back - stay on the fullscreen pane
+    } else {
+        // Move focus back to gz-claude
+        std::thread::sleep(std::time::Duration::from_millis(50));
+        let _ = Command::new("zellij")
+            .args(["action", "move-focus", "left"])
+            .status();
+    }
+
+    Ok(())
+}
+
+/// Runs a command in a floating pane.
+///
+/// If `fullscreen` is true, the pane will be toggled to fullscreen mode
+/// for optimal viewing from the web client.
+pub fn run_in_floating_pane(pane_name: &str, command: &str, fullscreen: bool) -> Result<()> {
+    if command.trim().is_empty() {
+        return Err(GzClaudeError::Zellij(
+            "Cannot run empty command".to_string(),
+        ));
+    }
+
+    let command_parts: Vec<&str> = command.split_whitespace().collect();
+
+    let mut cmd = Command::new("zellij");
+    cmd.arg("run")
+        .arg("--floating")
+        .arg("--width")
+        .arg("80%")
+        .arg("--height")
+        .arg("80%")
+        .arg("--name")
+        .arg(pane_name)
+        .arg("--");
+
+    for part in &command_parts {
+        cmd.arg(part);
+    }
+
+    let output = cmd
+        .status()
+        .map_err(|e| GzClaudeError::Zellij(format!("Failed to open floating pane: {}", e)))?;
+
+    if !output.success() {
+        return Err(GzClaudeError::Zellij(format!(
+            "Zellij run failed with status: {}",
+            output
+        )));
+    }
+
+    if fullscreen {
+        // Toggle fullscreen for web client viewing
+        std::thread::sleep(std::time::Duration::from_millis(100));
+        let _ = Command::new("zellij")
+            .args(["action", "toggle-fullscreen"])
+            .status();
+    }
+
+    Ok(())
+}
+
+/// Focus an existing pane by moving to the right.
+///
+/// Since Zellij doesn't support focus-by-name directly, this just
+/// moves focus to the right pane.
+///
+/// # Returns
+///
+/// Returns `Ok(())` if focus moved successfully.
+pub fn focus_main_pane() -> Result<()> {
+    let output = Command::new("zellij")
+        .args(["action", "move-focus", "right"])
+        .status()
+        .map_err(|e| GzClaudeError::Zellij(format!("Failed to move focus: {}", e)))?;
+
+    if !output.success() {
+        return Err(GzClaudeError::Zellij(
+            "Failed to focus main pane".to_string(),
+        ));
+    }
+
+    Ok(())
+}
+
+/// Toggle fullscreen mode for the currently focused pane.
+///
+/// This is useful for the web client to show only the Claude terminal.
+pub fn toggle_fullscreen() -> Result<()> {
+    let output = Command::new("zellij")
+        .args(["action", "toggle-fullscreen"])
+        .status()
+        .map_err(|e| GzClaudeError::Zellij(format!("Failed to toggle fullscreen: {}", e)))?;
+
+    if !output.success() {
+        return Err(GzClaudeError::Zellij(
+            "Failed to toggle fullscreen".to_string(),
+        ));
+    }
+
+    Ok(())
+}
+
 /// Opens a file in an editor within a new Zellij pane.
 ///
 /// Creates a new pane in the current Zellij session and opens the specified file

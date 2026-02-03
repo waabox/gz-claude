@@ -11,33 +11,36 @@ use std::path::PathBuf;
 
 use crate::error::{ConfigError, Result};
 
-const EXAMPLE_CONFIG: &str = r#"# gz-claude configuration file
-# See: docs/plans/2026-02-03-gz-claude-design.md
-
-[global]
-editor = "$EDITOR"
-git_info_level = "minimal"  # minimal | standard | detailed
-
-[global.actions]
-c = { name = "Claude", command = "claude", icon = "🤖" }
-b = { name = "Bash", command = "bash", icon = "💻" }
-g = { name = "Lazygit", command = "lazygit", icon = "󰊢" }
-
-[web_client]
-auto_start = false
-bind_address = "0.0.0.0"
-port = 8082
-
-# Example workspace - customize for your projects
-[workspace.example]
-name = "Example Workspace"
-
-[workspace.example.actions]
-t = { name = "Tests", command = "cargo test", icon = "🧪" }
-
-[[workspace.example.projects]]
-name = "My Project"
-path = "/path/to/your/project"
+const EXAMPLE_CONFIG: &str = r#"{
+  "global": {
+    "editor": "$EDITOR",
+    "git_info_level": "minimal",
+    "actions": {
+      "c": { "name": "Claude", "command": "claude", "icon": "🤖" },
+      "b": { "name": "Bash", "command": "bash", "icon": "💻" },
+      "g": { "name": "Lazygit", "command": "lazygit", "icon": "󰊢" }
+    }
+  },
+  "web_client": {
+    "auto_start": false,
+    "bind_address": "0.0.0.0",
+    "port": 8082
+  },
+  "workspace": {
+    "example": {
+      "name": "Example Workspace",
+      "actions": {
+        "t": { "name": "Tests", "command": "cargo test", "icon": "🧪" }
+      },
+      "projects": [
+        {
+          "name": "My Project",
+          "path": "/path/to/your/project"
+        }
+      ]
+    }
+  }
+}
 "#;
 
 /// Root configuration structure.
@@ -133,10 +136,10 @@ pub struct Action {
 }
 
 impl Config {
-    /// Load configuration from the default path (~/.config/gz-claude/config.toml).
+    /// Load configuration from the default path (~/.gz-claude/config.json).
     ///
     /// Reads the configuration file from the user's config directory and parses
-    /// it as TOML into the Config structure.
+    /// it as JSON into the Config structure.
     ///
     /// # Returns
     ///
@@ -146,7 +149,7 @@ impl Config {
     ///
     /// - `ConfigError::NotFound` if the configuration file doesn't exist
     /// - `ConfigError::ReadError` if the file cannot be read
-    /// - `ConfigError::ParseError` if the TOML content is invalid
+    /// - `ConfigError::ParseError` if the JSON content is invalid
     pub fn load() -> Result<Self> {
         let config_path = Self::default_path();
         Self::load_from(&config_path)
@@ -166,36 +169,33 @@ impl Config {
     ///
     /// - `ConfigError::NotFound` if the configuration file doesn't exist
     /// - `ConfigError::ReadError` if the file cannot be read
-    /// - `ConfigError::ParseError` if the TOML content is invalid
+    /// - `ConfigError::ParseError` if the JSON content is invalid
     pub fn load_from(path: &PathBuf) -> Result<Self> {
         if !path.exists() {
             return Err(ConfigError::NotFound(path.clone()).into());
         }
 
         let content = fs::read_to_string(path)?;
-        let config: Config = toml::from_str(&content).map_err(ConfigError::ParseError)?;
+        let config: Config = serde_json::from_str(&content).map_err(ConfigError::ParseError)?;
         Ok(config)
     }
 
     /// Returns the default configuration file path.
     ///
-    /// The default path is `~/.config/gz-claude/config.toml` on Linux/macOS.
-    /// Falls back to `./gz-claude/config.toml` if the config directory cannot be determined.
+    /// The default path is `~/.gz-claude/config.json`.
+    /// Falls back to `./.gz-claude/config.json` if the home directory cannot be determined.
     pub fn default_path() -> PathBuf {
-        dirs::config_dir()
-            .unwrap_or_else(|| PathBuf::from("."))
-            .join("gz-claude")
-            .join("config.toml")
+        Self::default_dir().join("config.json")
     }
 
     /// Returns the default configuration directory.
     ///
-    /// The default directory is `~/.config/gz-claude` on Linux/macOS.
-    /// Falls back to `./gz-claude` if the config directory cannot be determined.
+    /// The default directory is `~/.gz-claude`.
+    /// Falls back to `./.gz-claude` if the home directory cannot be determined.
     pub fn default_dir() -> PathBuf {
-        dirs::config_dir()
+        dirs::home_dir()
             .unwrap_or_else(|| PathBuf::from("."))
-            .join("gz-claude")
+            .join(".gz-claude")
     }
 
     /// Create an example configuration file at the default path.

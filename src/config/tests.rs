@@ -14,25 +14,27 @@ fn create_temp_config(content: &str) -> NamedTempFile {
 
 #[test]
 fn when_parsing_valid_config_should_succeed() {
-    let content = r#"
-        [global]
-        editor = "vim"
-        git_info_level = "standard"
-
-        [global.actions]
-        c = { name = "Claude", command = "claude", icon = "🤖" }
-
-        [web_client]
-        auto_start = true
-        port = 9000
-
-        [workspace.test]
-        name = "Test Workspace"
-
-        [[workspace.test.projects]]
-        name = "Project 1"
-        path = "/tmp"
-    "#;
+    let content = r#"{
+        "global": {
+            "editor": "vim",
+            "git_info_level": "standard",
+            "actions": {
+                "c": { "name": "Claude", "command": "claude", "icon": "🤖" }
+            }
+        },
+        "web_client": {
+            "auto_start": true,
+            "port": 9000
+        },
+        "workspace": {
+            "test": {
+                "name": "Test Workspace",
+                "projects": [
+                    { "name": "Project 1", "path": "/tmp" }
+                ]
+            }
+        }
+    }"#;
 
     let file = create_temp_config(content);
     let config = Config::load_from(&file.path().to_path_buf()).unwrap();
@@ -46,16 +48,17 @@ fn when_parsing_valid_config_should_succeed() {
 
 #[test]
 fn when_parsing_minimal_config_should_use_defaults() {
-    let content = r#"
-        [global]
-
-        [workspace.test]
-        name = "Test"
-
-        [[workspace.test.projects]]
-        name = "P1"
-        path = "/tmp"
-    "#;
+    let content = r#"{
+        "global": {},
+        "workspace": {
+            "test": {
+                "name": "Test",
+                "projects": [
+                    { "name": "P1", "path": "/tmp" }
+                ]
+            }
+        }
+    }"#;
 
     let file = create_temp_config(content);
     let config = Config::load_from(&file.path().to_path_buf()).unwrap();
@@ -68,19 +71,21 @@ fn when_parsing_minimal_config_should_use_defaults() {
 
 #[test]
 fn when_validating_config_with_invalid_action_key_should_fail() {
-    let content = r#"
-        [global]
-
-        [global.actions]
-        invalid_key = { name = "Test", command = "test" }
-
-        [workspace.test]
-        name = "Test"
-
-        [[workspace.test.projects]]
-        name = "P1"
-        path = "/tmp"
-    "#;
+    let content = r#"{
+        "global": {
+            "actions": {
+                "invalid_key": { "name": "Test", "command": "test" }
+            }
+        },
+        "workspace": {
+            "test": {
+                "name": "Test",
+                "projects": [
+                    { "name": "P1", "path": "/tmp" }
+                ]
+            }
+        }
+    }"#;
 
     let file = create_temp_config(content);
     let config = Config::load_from(&file.path().to_path_buf()).unwrap();
@@ -93,19 +98,21 @@ fn when_validating_config_with_invalid_action_key_should_fail() {
 
 #[test]
 fn when_validating_config_with_empty_command_should_fail() {
-    let content = r#"
-        [global]
-
-        [global.actions]
-        c = { name = "Claude", command = "   " }
-
-        [workspace.test]
-        name = "Test"
-
-        [[workspace.test.projects]]
-        name = "P1"
-        path = "/tmp"
-    "#;
+    let content = r#"{
+        "global": {
+            "actions": {
+                "c": { "name": "Claude", "command": "   " }
+            }
+        },
+        "workspace": {
+            "test": {
+                "name": "Test",
+                "projects": [
+                    { "name": "P1", "path": "/tmp" }
+                ]
+            }
+        }
+    }"#;
 
     let file = create_temp_config(content);
     let config = Config::load_from(&file.path().to_path_buf()).unwrap();
@@ -118,16 +125,17 @@ fn when_validating_config_with_empty_command_should_fail() {
 
 #[test]
 fn when_validating_config_with_nonexistent_path_should_fail() {
-    let content = r#"
-        [global]
-
-        [workspace.test]
-        name = "Test"
-
-        [[workspace.test.projects]]
-        name = "P1"
-        path = "/nonexistent/path/that/does/not/exist"
-    "#;
+    let content = r#"{
+        "global": {},
+        "workspace": {
+            "test": {
+                "name": "Test",
+                "projects": [
+                    { "name": "P1", "path": "/nonexistent/path/that/does/not/exist" }
+                ]
+            }
+        }
+    }"#;
 
     let file = create_temp_config(content);
     let config = Config::load_from(&file.path().to_path_buf()).unwrap();
@@ -140,9 +148,9 @@ fn when_validating_config_with_nonexistent_path_should_fail() {
 
 #[test]
 fn when_validating_config_with_no_workspaces_should_fail() {
-    let content = r#"
-        [global]
-    "#;
+    let content = r#"{
+        "global": {}
+    }"#;
 
     let file = create_temp_config(content);
     let config = Config::load_from(&file.path().to_path_buf()).unwrap();
@@ -155,28 +163,33 @@ fn when_validating_config_with_no_workspaces_should_fail() {
 
 #[test]
 fn when_resolving_actions_should_apply_inheritance() {
-    let content = r#"
-        [global]
-
-        [global.actions]
-        c = { name = "Global Claude", command = "claude-global" }
-        g = { name = "Git", command = "git" }
-
-        [workspace.test]
-        name = "Test"
-
-        [workspace.test.actions]
-        c = { name = "Workspace Claude", command = "claude-workspace" }
-        t = { name = "Tests", command = "cargo test" }
-
-        [[workspace.test.projects]]
-        name = "P1"
-        path = "/tmp"
-
-        [workspace.test.projects.actions]
-        c = { name = "Project Claude", command = "claude-project" }
-        p = { name = "Project Only", command = "project-cmd" }
-    "#;
+    let content = r#"{
+        "global": {
+            "actions": {
+                "c": { "name": "Global Claude", "command": "claude-global" },
+                "g": { "name": "Git", "command": "git" }
+            }
+        },
+        "workspace": {
+            "test": {
+                "name": "Test",
+                "actions": {
+                    "c": { "name": "Workspace Claude", "command": "claude-workspace" },
+                    "t": { "name": "Tests", "command": "cargo test" }
+                },
+                "projects": [
+                    {
+                        "name": "P1",
+                        "path": "/tmp",
+                        "actions": {
+                            "c": { "name": "Project Claude", "command": "claude-project" },
+                            "p": { "name": "Project Only", "command": "project-cmd" }
+                        }
+                    }
+                ]
+            }
+        }
+    }"#;
 
     let file = create_temp_config(content);
     let config = Config::load_from(&file.path().to_path_buf()).unwrap();
