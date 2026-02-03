@@ -2,6 +2,7 @@
 name = "gz-claude"
 version = "0.1.0"
 edition = "2021"
+rust-version = "1.75"
 description = "TUI for orchestrating Zellij workspaces with Claude Code"
 authors = ["waabox"]
 license = "MIT"
@@ -14,19 +15,19 @@ clap = { version = "4.5", features = ["derive"] }
 thiserror = "2.0"
 anyhow = "1.0"
 
-# Config (Etapa 1)
+# Config (Stage 1)
 serde = { version = "1.0", features = ["derive"] }
 toml = "0.8"
 
-# TUI (Etapa 3)
-ratatui = "0.29"
-crossterm = "0.28"
+# TUI (Stage 3)
+ratatui = "0.30"
+crossterm = "0.29"
 
-# Git (Etapa 2)
-git2 = "0.19"
+# Git (Stage 2)
+git2 = "0.20"
 
-# Async (Etapa 4)
-tokio = { version = "1.43", features = ["full"] }
+# Async (Stage 4)
+tokio = { version = "1.49", features = ["full"] }
 
 # Directories
 dirs = "6.0"
