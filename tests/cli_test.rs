@@ -4,22 +4,75 @@
 
 use assert_cmd::Command;
 use predicates::prelude::*;
+use std::fs;
+use tempfile::TempDir;
 
-#[test]
-fn when_running_without_args_should_show_starting_message() {
-    let mut cmd = Command::cargo_bin("gz-claude").unwrap();
-    cmd.assert()
-        .success()
-        .stdout(predicate::str::contains("Starting gz-claude"));
+fn setup_test_config(dir: &TempDir) -> std::path::PathBuf {
+    // On macOS, dirs::config_dir() returns ~/Library/Application Support
+    // On Linux, it returns ~/.config
+    #[cfg(target_os = "macos")]
+    let config_dir = dir
+        .path()
+        .join("Library")
+        .join("Application Support")
+        .join("gz-claude");
+    #[cfg(not(target_os = "macos"))]
+    let config_dir = dir.path().join(".config").join("gz-claude");
+
+    fs::create_dir_all(&config_dir).unwrap();
+
+    let config_content = r#"
+        [global]
+        editor = "vim"
+
+        [global.actions]
+        c = { name = "Claude", command = "claude" }
+
+        [workspace.test]
+        name = "Test Workspace"
+
+        [[workspace.test.projects]]
+        name = "Test Project"
+        path = "/tmp"
+    "#;
+
+    let config_path = config_dir.join("config.toml");
+    fs::write(&config_path, config_content).unwrap();
+    config_path
 }
 
 #[test]
-fn when_running_panel_subcommand_should_show_panel_mode_message() {
+fn when_running_without_config_should_create_example() {
+    let temp_dir = TempDir::new().unwrap();
+    let home = temp_dir.path();
+
     let mut cmd = Command::cargo_bin("gz-claude").unwrap();
-    cmd.arg("panel")
+    cmd.env("HOME", home)
+        .assert()
+        .failure()
+        .stdout(predicate::str::contains("Created example configuration"));
+}
+
+#[test]
+fn when_running_with_valid_config_should_succeed() {
+    let temp_dir = TempDir::new().unwrap();
+    setup_test_config(&temp_dir);
+
+    let mut cmd = Command::cargo_bin("gz-claude").unwrap();
+    cmd.env("HOME", temp_dir.path())
         .assert()
         .success()
-        .stdout(predicate::str::contains("Running in panel mode"));
+        .stdout(predicate::str::contains("Configuration loaded successfully"));
+}
+
+#[test]
+fn when_running_panel_outside_zellij_should_fail() {
+    let mut cmd = Command::cargo_bin("gz-claude").unwrap();
+    cmd.arg("panel")
+        .env_remove("ZELLIJ")
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("must be run inside Zellij"));
 }
 
 #[test]
