@@ -352,6 +352,7 @@ mod tests {
             name: "Test Project".to_string(),
             path: project_path,
             actions: HashMap::new(),
+            command_bar: vec![],
         }];
 
         let mut workspaces = HashMap::new();
@@ -360,6 +361,7 @@ mod tests {
             Workspace {
                 name: "Test Workspace".to_string(),
                 actions: HashMap::new(),
+                command_bar: vec![],
                 projects,
             },
         );
@@ -369,6 +371,7 @@ mod tests {
                 editor: "$EDITOR".to_string(),
                 git_info_level: Default::default(),
                 actions: global_actions,
+                command_bar: vec![],
             },
             web_client: WebClientConfig::default(),
             workspace: workspaces,

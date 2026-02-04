@@ -173,6 +173,7 @@ mod tests {
             Workspace {
                 name: "Fanki".to_string(),
                 actions: HashMap::new(),
+                command_bar: vec![],
                 projects: vec![],
             },
         );
@@ -181,6 +182,7 @@ mod tests {
             Workspace {
                 name: "Helios".to_string(),
                 actions: HashMap::new(),
+                command_bar: vec![],
                 projects: vec![],
             },
         );
@@ -190,6 +192,7 @@ mod tests {
                 editor: "$EDITOR".to_string(),
                 git_info_level: Default::default(),
                 actions: HashMap::new(),
+                command_bar: vec![],
             },
             web_client: Default::default(),
             workspace: workspaces,
@@ -202,6 +205,7 @@ mod tests {
                 editor: "$EDITOR".to_string(),
                 git_info_level: Default::default(),
                 actions: HashMap::new(),
+                command_bar: vec![],
             },
             web_client: Default::default(),
             workspace: HashMap::new(),

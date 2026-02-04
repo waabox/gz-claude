@@ -7,7 +7,7 @@
 
 #![allow(dead_code)]
 
-use ratatui::layout::Rect;
+use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::Frame;
 use std::cell::RefCell;
 use std::path::PathBuf;
@@ -17,7 +17,7 @@ use crate::error::Result;
 use crate::session::Session;
 use crate::tui::app::{AppState, View};
 use crate::tui::terminal::{init, poll_event, restore, InputEvent, Tui};
-use crate::tui::views::{FileBrowserView, ProjectsView, WorkspacesView};
+use crate::tui::views::{CommandBar, FileBrowserView, ProjectsView, WorkspacesView};
 
 /// Thread-local session state for the TUI.
 thread_local! {
@@ -104,7 +104,8 @@ fn run_loop(terminal: &mut Tui, state: &mut AppState, config: &Config) -> Result
 /// Renders the appropriate view based on the current application state.
 ///
 /// Matches on the current view and creates the appropriate view component
-/// to render to the frame.
+/// to render to the frame. If the command bar is visible, splits the area
+/// to show the command bar at the bottom.
 ///
 /// # Arguments
 ///
@@ -113,14 +114,26 @@ fn run_loop(terminal: &mut Tui, state: &mut AppState, config: &Config) -> Result
 /// * `state` - Reference to the application state
 /// * `config` - Reference to the application configuration
 fn render_current_view(frame: &mut Frame, area: Rect, state: &AppState, config: &Config) {
+    // Calculate areas for main view and optional command bar
+    let (main_area, command_bar_area) = if state.is_command_bar_visible() {
+        let chunks = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([Constraint::Min(1), Constraint::Length(1)])
+            .split(area);
+        (chunks[0], Some(chunks[1]))
+    } else {
+        (area, None)
+    };
+
+    // Render main view
     match state.current_view() {
         View::Workspaces => {
             let view = WorkspacesView::new(config, state.selected_index());
-            view.render(frame, area);
+            view.render(frame, main_area);
         }
         View::Projects { workspace_id } => {
             let view = ProjectsView::new(config, workspace_id, state.selected_index());
-            view.render(frame, area);
+            view.render(frame, main_area);
         }
         View::FileBrowser {
             workspace_id,
@@ -133,15 +146,23 @@ fn render_current_view(frame: &mut Frame, area: Rect, state: &AppState, config: 
                 state.selected_index(),
                 state.expanded_dirs(),
             );
-            view.render(frame, area);
+            view.render(frame, main_area);
         }
+    }
+
+    // Render command bar if visible
+    if let Some(bar_area) = command_bar_area {
+        let commands = get_command_bar_items(state, config);
+        let command_bar = CommandBar::new(&commands, state.command_bar_selected());
+        command_bar.render(frame, bar_area);
     }
 }
 
 /// Handles input events by updating the application state.
 ///
 /// Processes navigation (up/down), selection (enter), back navigation,
-/// quit requests, and other actions.
+/// quit requests, and other actions. When the command bar is visible,
+/// intercepts relevant events for command bar navigation.
 ///
 /// # Arguments
 ///
@@ -149,6 +170,12 @@ fn render_current_view(frame: &mut Frame, area: Rect, state: &AppState, config: 
 /// * `config` - Reference to the application configuration
 /// * `event` - The input event to handle
 fn handle_input(state: &mut AppState, config: &Config, event: InputEvent) {
+    // Handle command bar mode separately
+    if state.is_command_bar_visible() {
+        handle_command_bar_input(state, config, event);
+        return;
+    }
+
     match event {
         InputEvent::Up => {
             let current = state.selected_index();
@@ -162,6 +189,9 @@ fn handle_input(state: &mut AppState, config: &Config, event: InputEvent) {
             if max_index > 0 && current < max_index - 1 {
                 state.set_selected_index(current + 1);
             }
+        }
+        InputEvent::Left | InputEvent::Right => {
+            // Not used in normal mode
         }
         InputEvent::Enter => {
             handle_enter(state, config);
@@ -180,9 +210,93 @@ fn handle_input(state: &mut AppState, config: &Config, event: InputEvent) {
             // Views are recreated on each render, so git info refreshes automatically.
             // The 'r' key serves as a signal to the user that data has been refreshed.
         }
+        InputEvent::ToggleCommandBar => {
+            // Only allow command bar in Projects and FileBrowser views
+            if !matches!(state.current_view(), View::Workspaces) {
+                state.toggle_command_bar();
+            }
+        }
         InputEvent::Action(key) => {
             handle_action(state, config, key);
         }
+    }
+}
+
+/// Handles input events when the command bar is visible.
+///
+/// Processes horizontal navigation (left/right), command execution (enter),
+/// and closing the command bar (esc/back/colon).
+///
+/// # Arguments
+///
+/// * `state` - Mutable reference to the application state
+/// * `config` - Reference to the application configuration
+/// * `event` - The input event to handle
+fn handle_command_bar_input(state: &mut AppState, config: &Config, event: InputEvent) {
+    let commands = get_command_bar_items(state, config);
+    let max = commands.len();
+
+    match event {
+        InputEvent::Left => {
+            state.command_bar_select_prev(max);
+        }
+        InputEvent::Right => {
+            state.command_bar_select_next(max);
+        }
+        InputEvent::Enter => {
+            execute_command_bar_item(state, config);
+            state.hide_command_bar();
+        }
+        InputEvent::Back | InputEvent::ToggleCommandBar => {
+            state.hide_command_bar();
+        }
+        InputEvent::Quit => {
+            state.hide_command_bar();
+        }
+        // Ignore other events while command bar is visible
+        _ => {}
+    }
+}
+
+/// Returns the command bar items for the current view.
+///
+/// Resolves commands based on inheritance (global -> workspace -> project).
+///
+/// # Arguments
+///
+/// * `state` - Reference to the application state
+/// * `config` - Reference to the application configuration
+///
+/// # Returns
+///
+/// A vector of command bar items for the current context.
+fn get_command_bar_items(state: &AppState, config: &Config) -> Vec<crate::config::CommandBarItem> {
+    match state.current_view() {
+        View::Projects { workspace_id } => {
+            config.resolve_command_bar(workspace_id, state.selected_index())
+        }
+        View::FileBrowser {
+            workspace_id,
+            project_index,
+        } => config.resolve_command_bar(workspace_id, *project_index),
+        View::Workspaces => vec![],
+    }
+}
+
+/// Executes the currently selected command bar item.
+///
+/// Gets the selected command and runs it in a floating Zellij pane.
+///
+/// # Arguments
+///
+/// * `state` - Reference to the application state
+/// * `config` - Reference to the application configuration
+fn execute_command_bar_item(state: &AppState, config: &Config) {
+    let commands = get_command_bar_items(state, config);
+
+    if let Some(cmd) = commands.get(state.command_bar_selected()) {
+        let pane_name = format!("cmd-{}", cmd.name.to_lowercase().replace(' ', "-"));
+        let _ = crate::zellij::run_in_floating_pane(&pane_name, &cmd.command, false);
     }
 }
 
@@ -344,6 +458,7 @@ mod tests {
             Workspace {
                 name: "Workspace A".to_string(),
                 actions: HashMap::new(),
+                command_bar: vec![],
                 projects: vec![],
             },
         );
@@ -352,6 +467,7 @@ mod tests {
             Workspace {
                 name: "Workspace B".to_string(),
                 actions: HashMap::new(),
+                command_bar: vec![],
                 projects: vec![],
             },
         );
@@ -361,6 +477,7 @@ mod tests {
                 editor: "$EDITOR".to_string(),
                 git_info_level: Default::default(),
                 actions: HashMap::new(),
+                command_bar: vec![],
             },
             web_client: WebClientConfig::default(),
             workspace: workspaces,
@@ -426,5 +543,90 @@ mod tests {
         assert_eq!(*state.current_view(), View::Workspaces);
         assert_eq!(state.selected_index(), 0);
         assert!(!state.should_quit());
+    }
+
+    #[test]
+    fn when_toggling_command_bar_at_workspaces_should_not_open() {
+        let config = create_test_config();
+        let mut state = AppState::new();
+
+        handle_input(&mut state, &config, InputEvent::ToggleCommandBar);
+
+        assert!(!state.is_command_bar_visible());
+    }
+
+    #[test]
+    fn when_toggling_command_bar_at_projects_should_open() {
+        let config = create_test_config();
+        let mut state = AppState::new();
+        state.navigate_to_workspace("workspace-a".to_string());
+
+        handle_input(&mut state, &config, InputEvent::ToggleCommandBar);
+
+        assert!(state.is_command_bar_visible());
+    }
+
+    #[test]
+    fn when_pressing_esc_with_command_bar_open_should_close() {
+        let config = create_test_config();
+        let mut state = AppState::new();
+        state.navigate_to_workspace("workspace-a".to_string());
+        state.toggle_command_bar();
+        assert!(state.is_command_bar_visible());
+
+        handle_input(&mut state, &config, InputEvent::Back);
+
+        assert!(!state.is_command_bar_visible());
+    }
+
+    #[test]
+    fn when_navigating_command_bar_should_change_selection() {
+        let config = create_test_config_with_command_bar();
+        let mut state = AppState::new();
+        state.navigate_to_workspace("workspace-a".to_string());
+        state.toggle_command_bar();
+
+        handle_input(&mut state, &config, InputEvent::Right);
+
+        assert_eq!(state.command_bar_selected(), 1);
+    }
+
+    fn create_test_config_with_command_bar() -> Config {
+        use crate::config::CommandBarItem;
+
+        let mut workspaces = HashMap::new();
+        workspaces.insert(
+            "workspace-a".to_string(),
+            Workspace {
+                name: "Workspace A".to_string(),
+                actions: HashMap::new(),
+                command_bar: vec![],
+                projects: vec![],
+            },
+        );
+
+        Config {
+            global: GlobalConfig {
+                editor: "$EDITOR".to_string(),
+                git_info_level: Default::default(),
+                actions: HashMap::new(),
+                command_bar: vec![
+                    CommandBarItem {
+                        key: "p".to_string(),
+                        name: "Pipeline".to_string(),
+                        command: "echo pipeline".to_string(),
+                        icon: Some("🚀".to_string()),
+                    },
+                    CommandBarItem {
+                        key: "d".to_string(),
+                        name: "Deploy".to_string(),
+                        command: "echo deploy".to_string(),
+                        icon: None,
+                    },
+                ],
+            },
+            web_client: WebClientConfig::default(),
+            workspace: workspaces,
+        }
     }
 }

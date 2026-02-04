@@ -30,6 +30,10 @@ pub enum InputEvent {
     Up,
     /// Navigate down in a list (Down arrow or 'j').
     Down,
+    /// Navigate left in a horizontal selection (Left arrow or 'h').
+    Left,
+    /// Navigate right in a horizontal selection (Right arrow or 'l').
+    Right,
     /// Confirm selection (Enter).
     Enter,
     /// Navigate back (Esc or Backspace).
@@ -38,6 +42,8 @@ pub enum InputEvent {
     Quit,
     /// Refresh the current view ('r').
     Refresh,
+    /// Toggle command bar visibility (':').
+    ToggleCommandBar,
     /// Custom action triggered by a character key.
     Action(char),
 }
@@ -119,6 +125,8 @@ fn key_to_event(key: KeyEvent) -> Option<InputEvent> {
     match key.code {
         KeyCode::Up => Some(InputEvent::Up),
         KeyCode::Down => Some(InputEvent::Down),
+        KeyCode::Left => Some(InputEvent::Left),
+        KeyCode::Right => Some(InputEvent::Right),
         KeyCode::Enter => Some(InputEvent::Enter),
         KeyCode::Esc | KeyCode::Backspace => Some(InputEvent::Back),
         KeyCode::Char(c) => {
@@ -126,8 +134,11 @@ fn key_to_event(key: KeyEvent) -> Option<InputEvent> {
                 match c {
                     'k' => Some(InputEvent::Up),
                     'j' => Some(InputEvent::Down),
+                    'h' => Some(InputEvent::Left),
+                    'l' => Some(InputEvent::Right),
                     'q' => Some(InputEvent::Quit),
                     'r' => Some(InputEvent::Refresh),
+                    ':' => Some(InputEvent::ToggleCommandBar),
                     _ => Some(InputEvent::Action(c)),
                 }
             } else {
@@ -203,5 +214,30 @@ mod tests {
         assert_eq!(key_to_event(a_key), Some(InputEvent::Action('a')));
         assert_eq!(key_to_event(x_key), Some(InputEvent::Action('x')));
         assert_eq!(key_to_event(one_key), Some(InputEvent::Action('1')));
+    }
+
+    #[test]
+    fn when_pressing_left_or_h_should_return_left_event() {
+        let left_arrow = create_key_event(KeyCode::Left, KeyModifiers::NONE);
+        let h_key = create_key_event(KeyCode::Char('h'), KeyModifiers::NONE);
+
+        assert_eq!(key_to_event(left_arrow), Some(InputEvent::Left));
+        assert_eq!(key_to_event(h_key), Some(InputEvent::Left));
+    }
+
+    #[test]
+    fn when_pressing_right_or_l_should_return_right_event() {
+        let right_arrow = create_key_event(KeyCode::Right, KeyModifiers::NONE);
+        let l_key = create_key_event(KeyCode::Char('l'), KeyModifiers::NONE);
+
+        assert_eq!(key_to_event(right_arrow), Some(InputEvent::Right));
+        assert_eq!(key_to_event(l_key), Some(InputEvent::Right));
+    }
+
+    #[test]
+    fn when_pressing_colon_should_return_toggle_command_bar_event() {
+        let colon_key = create_key_event(KeyCode::Char(':'), KeyModifiers::SHIFT);
+
+        assert_eq!(key_to_event(colon_key), Some(InputEvent::ToggleCommandBar));
     }
 }

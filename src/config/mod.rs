@@ -19,7 +19,10 @@ const EXAMPLE_CONFIG: &str = r#"{
       "c": { "name": "Claude", "command": "claude", "icon": "🤖" },
       "b": { "name": "Bash", "command": "bash", "icon": "💻" },
       "g": { "name": "Lazygit", "command": "lazygit", "icon": "󰊢" }
-    }
+    },
+    "command_bar": [
+      { "key": "p", "name": "Pipeline", "command": "echo 'Pipeline running'", "icon": "🚀" }
+    ]
   },
   "web_client": {
     "auto_start": false,
@@ -62,6 +65,8 @@ pub struct GlobalConfig {
     pub git_info_level: GitInfoLevel,
     #[serde(default)]
     pub actions: HashMap<String, Action>,
+    #[serde(default)]
+    pub command_bar: Vec<CommandBarItem>,
 }
 
 fn default_editor() -> String {
@@ -114,6 +119,8 @@ pub struct Workspace {
     #[serde(default)]
     pub actions: HashMap<String, Action>,
     #[serde(default)]
+    pub command_bar: Vec<CommandBarItem>,
+    #[serde(default)]
     pub projects: Vec<Project>,
 }
 
@@ -124,6 +131,8 @@ pub struct Project {
     pub path: PathBuf,
     #[serde(default)]
     pub actions: HashMap<String, Action>,
+    #[serde(default)]
+    pub command_bar: Vec<CommandBarItem>,
 }
 
 /// An action that can be triggered from the TUI.
@@ -131,6 +140,23 @@ pub struct Project {
 pub struct Action {
     pub name: String,
     pub command: String,
+    #[serde(default)]
+    pub icon: Option<String>,
+}
+
+/// An item in the command bar.
+///
+/// Command bar items are displayed at the bottom of the TUI and can be
+/// selected with arrow keys and executed with Enter.
+#[derive(Debug, Deserialize, Clone)]
+pub struct CommandBarItem {
+    /// Single character key shortcut (displayed but not used for direct activation).
+    pub key: String,
+    /// Display name for the command.
+    pub name: String,
+    /// The shell command to execute.
+    pub command: String,
+    /// Optional icon to display next to the name.
     #[serde(default)]
     pub icon: Option<String>,
 }
@@ -335,6 +361,53 @@ impl Config {
         }
 
         actions
+    }
+
+    /// Resolve command bar items for a specific project, applying inheritance:
+    /// global -> workspace -> project
+    ///
+    /// Items are merged in order of specificity, with more specific levels
+    /// adding to less specific ones. Items with the same key are overwritten.
+    ///
+    /// # Arguments
+    ///
+    /// * `workspace_id` - The identifier of the workspace
+    /// * `project_index` - The index of the project within the workspace
+    ///
+    /// # Returns
+    ///
+    /// A Vec containing all resolved command bar items for the specified project.
+    /// If the workspace or project doesn't exist, returns only global items.
+    pub fn resolve_command_bar(
+        &self,
+        workspace_id: &str,
+        project_index: usize,
+    ) -> Vec<CommandBarItem> {
+        let mut items: HashMap<String, CommandBarItem> = HashMap::new();
+
+        // Add global command bar items
+        for item in &self.global.command_bar {
+            items.insert(item.key.clone(), item.clone());
+        }
+
+        if let Some(workspace) = self.workspace.get(workspace_id) {
+            // Merge workspace items (override global with same key)
+            for item in &workspace.command_bar {
+                items.insert(item.key.clone(), item.clone());
+            }
+
+            // Merge project items (override workspace with same key)
+            if let Some(project) = workspace.projects.get(project_index) {
+                for item in &project.command_bar {
+                    items.insert(item.key.clone(), item.clone());
+                }
+            }
+        }
+
+        // Return as a sorted Vec by key for consistent ordering
+        let mut result: Vec<CommandBarItem> = items.into_values().collect();
+        result.sort_by(|a, b| a.key.cmp(&b.key));
+        result
     }
 }
 

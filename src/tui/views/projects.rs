@@ -317,16 +317,19 @@ mod tests {
                 name: "Project Alpha".to_string(),
                 path: PathBuf::from("/tmp/alpha"),
                 actions: HashMap::new(),
+                command_bar: vec![],
             },
             Project {
                 name: "Project Beta".to_string(),
                 path: PathBuf::from("/tmp/beta"),
                 actions: HashMap::new(),
+                command_bar: vec![],
             },
             Project {
                 name: "Project Gamma".to_string(),
                 path: PathBuf::from("/tmp/gamma"),
                 actions: HashMap::new(),
+                command_bar: vec![],
             },
         ];
 
@@ -336,6 +339,7 @@ mod tests {
             Workspace {
                 name: "Fanki".to_string(),
                 actions: workspace_actions,
+                command_bar: vec![],
                 projects,
             },
         );
@@ -345,6 +349,7 @@ mod tests {
                 editor: "$EDITOR".to_string(),
                 git_info_level: Default::default(),
                 actions: global_actions,
+                command_bar: vec![],
             },
             web_client: WebClientConfig::default(),
             workspace: workspaces,
@@ -358,6 +363,7 @@ mod tests {
             Workspace {
                 name: "Empty Workspace".to_string(),
                 actions: HashMap::new(),
+                command_bar: vec![],
                 projects: vec![],
             },
         );
@@ -367,6 +373,7 @@ mod tests {
                 editor: "$EDITOR".to_string(),
                 git_info_level: Default::default(),
                 actions: HashMap::new(),
+                command_bar: vec![],
             },
             web_client: WebClientConfig::default(),
             workspace: workspaces,

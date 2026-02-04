@@ -44,6 +44,10 @@ pub struct AppState {
     should_quit: bool,
     /// Set of expanded directory paths in the file browser.
     expanded_dirs: HashSet<PathBuf>,
+    /// Whether the command bar is currently visible.
+    command_bar_visible: bool,
+    /// The index of the currently selected command in the command bar.
+    command_bar_selected: usize,
 }
 
 impl AppState {
@@ -52,13 +56,16 @@ impl AppState {
     /// # Returns
     ///
     /// A new AppState initialized with the Workspaces view, selection at index 0,
-    /// should_quit set to false, and an empty set of expanded directories.
+    /// should_quit set to false, an empty set of expanded directories, and
+    /// command bar hidden.
     pub fn new() -> Self {
         Self {
             current_view: View::Workspaces,
             selected_index: 0,
             should_quit: false,
             expanded_dirs: HashSet::new(),
+            command_bar_visible: false,
+            command_bar_selected: 0,
         }
     }
 
@@ -127,6 +134,62 @@ impl AppState {
     /// A reference to the HashSet of expanded directory paths.
     pub fn expanded_dirs(&self) -> &HashSet<PathBuf> {
         &self.expanded_dirs
+    }
+
+    /// Toggles the visibility of the command bar.
+    ///
+    /// When showing the command bar, resets the selection to 0.
+    pub fn toggle_command_bar(&mut self) {
+        self.command_bar_visible = !self.command_bar_visible;
+        if self.command_bar_visible {
+            self.command_bar_selected = 0;
+        }
+    }
+
+    /// Returns whether the command bar is currently visible.
+    pub fn is_command_bar_visible(&self) -> bool {
+        self.command_bar_visible
+    }
+
+    /// Hides the command bar.
+    pub fn hide_command_bar(&mut self) {
+        self.command_bar_visible = false;
+        self.command_bar_selected = 0;
+    }
+
+    /// Returns the currently selected command bar index.
+    pub fn command_bar_selected(&self) -> usize {
+        self.command_bar_selected
+    }
+
+    /// Selects the next command in the command bar.
+    ///
+    /// Wraps around to the first command if at the end.
+    ///
+    /// # Arguments
+    ///
+    /// * `max` - The total number of commands in the command bar
+    pub fn command_bar_select_next(&mut self, max: usize) {
+        if max > 0 {
+            self.command_bar_selected = (self.command_bar_selected + 1) % max;
+        }
+    }
+
+    /// Selects the previous command in the command bar.
+    ///
+    /// Wraps around to the last command if at the beginning.
+    ///
+    /// # Arguments
+    ///
+    /// * `max` - The total number of commands in the command bar
+    pub fn command_bar_select_prev(&mut self, max: usize) {
+        if max > 0 {
+            if self.command_bar_selected == 0 {
+                self.command_bar_selected = max - 1;
+            } else {
+                self.command_bar_selected -= 1;
+            }
+        }
     }
 
     /// Navigates to the Projects view for the specified workspace.
@@ -264,5 +327,62 @@ mod tests {
             }
         );
         assert_eq!(app_state.selected_index(), 0);
+    }
+
+    #[test]
+    fn when_toggling_command_bar_should_change_visibility() {
+        let mut app_state = AppState::new();
+
+        assert!(!app_state.is_command_bar_visible());
+
+        app_state.toggle_command_bar();
+        assert!(app_state.is_command_bar_visible());
+
+        app_state.toggle_command_bar();
+        assert!(!app_state.is_command_bar_visible());
+    }
+
+    #[test]
+    fn when_selecting_next_command_should_wrap_around() {
+        let mut app_state = AppState::new();
+        app_state.toggle_command_bar();
+
+        app_state.command_bar_select_next(3);
+        assert_eq!(app_state.command_bar_selected(), 1);
+
+        app_state.command_bar_select_next(3);
+        assert_eq!(app_state.command_bar_selected(), 2);
+
+        app_state.command_bar_select_next(3);
+        assert_eq!(app_state.command_bar_selected(), 0);
+    }
+
+    #[test]
+    fn when_selecting_prev_command_should_wrap_around() {
+        let mut app_state = AppState::new();
+        app_state.toggle_command_bar();
+
+        app_state.command_bar_select_prev(3);
+        assert_eq!(app_state.command_bar_selected(), 2);
+
+        app_state.command_bar_select_prev(3);
+        assert_eq!(app_state.command_bar_selected(), 1);
+
+        app_state.command_bar_select_prev(3);
+        assert_eq!(app_state.command_bar_selected(), 0);
+    }
+
+    #[test]
+    fn when_hiding_command_bar_should_reset_selection() {
+        let mut app_state = AppState::new();
+        app_state.toggle_command_bar();
+        app_state.command_bar_select_next(3);
+        app_state.command_bar_select_next(3);
+        assert_eq!(app_state.command_bar_selected(), 2);
+
+        app_state.hide_command_bar();
+
+        assert!(!app_state.is_command_bar_visible());
+        assert_eq!(app_state.command_bar_selected(), 0);
     }
 }
